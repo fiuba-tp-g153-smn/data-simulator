@@ -4,10 +4,10 @@ import os
 from datetime import datetime, timezone
 from pathlib import Path
 
-from feed_simulator.core.emitter import FileEmitter
-from feed_simulator.sources.wrf.wrf_filenames import derive_field3d_name
-from feed_simulator.sources.wrf.wrf_replayer import WrfReplayer
-from feed_simulator.state.models import SourceState
+from data_simulator.core.emitter import FileEmitter
+from data_simulator.sources.wrf.wrf_filenames import derive_field3d_name
+from data_simulator.sources.wrf.wrf_replayer import WrfReplayer
+from data_simulator.state.models import SourceState
 
 SLOT = datetime(2026, 6, 11, 6, 0, tzinfo=timezone.utc)
 

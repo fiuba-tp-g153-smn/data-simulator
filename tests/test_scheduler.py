@@ -5,14 +5,14 @@ from pathlib import Path
 
 import pytest
 
-from feed_simulator.clock import Clock
-from feed_simulator.core.pruner import Pruner
-from feed_simulator.core.replayer import Replayer
-from feed_simulator.core.scheduler import ScheduledSource, TickScheduler
-from feed_simulator.core.state_transitions import advance_state
-from feed_simulator.core.tick_plan import TickPlan
-from feed_simulator.state.models import SimState, SourceState
-from feed_simulator.state.state_store import JsonStateStore
+from data_simulator.clock import Clock
+from data_simulator.core.pruner import Pruner
+from data_simulator.core.replayer import Replayer
+from data_simulator.core.scheduler import ScheduledSource, TickScheduler
+from data_simulator.core.state_transitions import advance_state
+from data_simulator.core.tick_plan import TickPlan
+from data_simulator.state.models import SimState, SourceState
+from data_simulator.state.state_store import JsonStateStore
 
 NOW = datetime(2026, 6, 11, 9, 17, tzinfo=timezone.utc)
 ALIGNED = datetime(2026, 6, 11, 9, 10, tzinfo=timezone.utc)

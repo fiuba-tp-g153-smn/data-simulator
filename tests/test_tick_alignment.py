@@ -2,7 +2,7 @@
 
 from datetime import datetime, timezone
 
-from feed_simulator.core.tick_alignment import next_aligned, prev_aligned
+from data_simulator.core.tick_alignment import next_aligned, prev_aligned
 
 
 def _utc(*args) -> datetime:

@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 import h5py
 import numpy as np
 
-from feed_simulator.sources.glm.glm_attr_rewriter import GlmAttrRewriter
+from data_simulator.sources.glm.glm_attr_rewriter import GlmAttrRewriter
 
 
 def _make_glm_like_file(path):

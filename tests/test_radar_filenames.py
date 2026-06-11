@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 
 import pytest
 
-from feed_simulator.sources.radar.radar_filenames import (
+from data_simulator.sources.radar.radar_filenames import (
     build_radar_filename,
     parse_radar_filename,
 )

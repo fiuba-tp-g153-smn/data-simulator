@@ -4,9 +4,9 @@ import os
 from datetime import datetime, timezone
 from pathlib import Path
 
-from feed_simulator.core.emitter import FileEmitter
-from feed_simulator.sources.radar.radar_replayer import RadarReplayer
-from feed_simulator.state.models import SourceState
+from data_simulator.core.emitter import FileEmitter
+from data_simulator.sources.radar.radar_replayer import RadarReplayer
+from data_simulator.state.models import SourceState
 
 TICK = datetime(2026, 6, 11, 9, 10, tzinfo=timezone.utc)
 

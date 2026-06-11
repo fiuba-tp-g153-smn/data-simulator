@@ -4,8 +4,8 @@ from abc import ABC, abstractmethod
 from datetime import datetime
 from pathlib import Path
 
-from feed_simulator.core.tick_plan import TickPlan
-from feed_simulator.state.models import SourceState
+from data_simulator.core.tick_plan import TickPlan
+from data_simulator.state.models import SourceState
 
 
 class Replayer(ABC):

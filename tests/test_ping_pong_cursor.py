@@ -2,8 +2,8 @@
 
 import pytest
 
-from feed_simulator.core.ping_pong_cursor import PingPongCursor
-from feed_simulator.state.models import CursorState
+from data_simulator.core.ping_pong_cursor import PingPongCursor
+from data_simulator.state.models import CursorState
 
 
 def _take(cursor: PingPongCursor, count: int) -> list[int]:

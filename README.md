@@ -1,4 +1,4 @@
-# feed-simulator
+# data-simulator
 
 Replays the static GLM / SINARAME radar / WRF-ARG4K snapshots of **tiles-processor** as if new data were arriving, so the full pipeline (producer → RabbitMQ → workers → tiles) runs continuously on a VPS without live feeds.
 

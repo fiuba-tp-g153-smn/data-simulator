@@ -1,6 +1,6 @@
 """Reflecting cursor over a finite sequence (forward, then backward, no wrap jump)."""
 
-from feed_simulator.state.models import CursorState
+from data_simulator.state.models import CursorState
 
 
 class PingPongCursor:

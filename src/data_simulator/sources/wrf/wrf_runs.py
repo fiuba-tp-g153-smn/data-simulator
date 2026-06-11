@@ -5,7 +5,7 @@ from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import Path
 
-from feed_simulator.sources.wrf.wrf_filenames import (
+from data_simulator.sources.wrf.wrf_filenames import (
     derive_field3d_name,
     parse_wrf_filename,
 )

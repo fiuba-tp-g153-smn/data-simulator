@@ -5,11 +5,11 @@ import logging
 from dataclasses import dataclass
 from datetime import datetime
 
-from feed_simulator.clock import Clock
-from feed_simulator.core.pruner import Pruner
-from feed_simulator.core.replayer import Replayer
-from feed_simulator.core.tick_alignment import next_aligned, prev_aligned
-from feed_simulator.state.state_store import JsonStateStore
+from data_simulator.clock import Clock
+from data_simulator.core.pruner import Pruner
+from data_simulator.core.replayer import Replayer
+from data_simulator.core.tick_alignment import next_aligned, prev_aligned
+from data_simulator.state.state_store import JsonStateStore
 
 logger = logging.getLogger(__name__)
 

@@ -5,21 +5,21 @@ from dataclasses import replace
 from datetime import datetime, timezone
 from pathlib import Path
 
-from feed_simulator.core.emitter import FileEmitter
-from feed_simulator.core.ping_pong_cursor import PingPongCursor
-from feed_simulator.core.replayer import Replayer
-from feed_simulator.core.state_transitions import advance_state
-from feed_simulator.core.tick_plan import EmitMode, FileMapping, TickPlan
-from feed_simulator.sources.wrf.wrf_filenames import (
+from data_simulator.core.emitter import FileEmitter
+from data_simulator.core.ping_pong_cursor import PingPongCursor
+from data_simulator.core.replayer import Replayer
+from data_simulator.core.state_transitions import advance_state
+from data_simulator.core.tick_plan import EmitMode, FileMapping, TickPlan
+from data_simulator.sources.wrf.wrf_filenames import (
     build_wrf_filename,
     parse_wrf_filename,
 )
-from feed_simulator.sources.wrf.wrf_runs import (
+from data_simulator.sources.wrf.wrf_runs import (
     EXPECTED_FORECAST_HOURS,
     WrfRun,
     discover_complete_runs,
 )
-from feed_simulator.state.models import SourceState
+from data_simulator.state.models import SourceState
 
 logger = logging.getLogger(__name__)
 

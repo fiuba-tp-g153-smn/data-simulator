@@ -5,18 +5,18 @@ from pathlib import Path
 
 from fastapi import FastAPI
 
-from feed_simulator.api.app import create_app
-from feed_simulator.clock import Clock, SystemClock
-from feed_simulator.config import Settings, SourceSettings
-from feed_simulator.core.emitter import FileEmitter
-from feed_simulator.core.pruner import Pruner
-from feed_simulator.core.replayer import Replayer
-from feed_simulator.core.scheduler import ScheduledSource, TickScheduler
-from feed_simulator.sources.glm.glm_attr_rewriter import GlmAttrRewriter
-from feed_simulator.sources.glm.glm_replayer import GlmReplayer
-from feed_simulator.sources.radar.radar_replayer import RadarReplayer
-from feed_simulator.sources.wrf.wrf_replayer import WrfReplayer
-from feed_simulator.state.state_store import JsonStateStore
+from data_simulator.api.app import create_app
+from data_simulator.clock import Clock, SystemClock
+from data_simulator.config import Settings, SourceSettings
+from data_simulator.core.emitter import FileEmitter
+from data_simulator.core.pruner import Pruner
+from data_simulator.core.replayer import Replayer
+from data_simulator.core.scheduler import ScheduledSource, TickScheduler
+from data_simulator.sources.glm.glm_attr_rewriter import GlmAttrRewriter
+from data_simulator.sources.glm.glm_replayer import GlmReplayer
+from data_simulator.sources.radar.radar_replayer import RadarReplayer
+from data_simulator.sources.wrf.wrf_replayer import WrfReplayer
+from data_simulator.state.state_store import JsonStateStore
 
 logger = logging.getLogger(__name__)
 

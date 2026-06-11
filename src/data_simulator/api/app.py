@@ -4,18 +4,18 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException
 
-from feed_simulator.api.schemas import (
+from data_simulator.api.schemas import (
     CursorInfo,
     SourceStatus,
     StatusResponse,
     TickResponse,
 )
-from feed_simulator.clock import Clock
-from feed_simulator.config import Settings
-from feed_simulator.core.scheduler import TickScheduler
-from feed_simulator.core.tick_alignment import next_aligned
-from feed_simulator.state.models import SourceState
-from feed_simulator.state.state_store import JsonStateStore
+from data_simulator.clock import Clock
+from data_simulator.config import Settings
+from data_simulator.core.scheduler import TickScheduler
+from data_simulator.core.tick_alignment import next_aligned
+from data_simulator.state.models import SourceState
+from data_simulator.state.state_store import JsonStateStore
 
 
 def create_app(
@@ -30,7 +30,7 @@ def create_app(
         yield
         await scheduler.stop()
 
-    app = FastAPI(title="feed-simulator", lifespan=lifespan)
+    app = FastAPI(title="data-simulator", lifespan=lifespan)
 
     @app.get("/health")
     def health() -> dict:

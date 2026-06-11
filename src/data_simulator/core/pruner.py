@@ -4,7 +4,7 @@ import logging
 from datetime import datetime, timedelta
 from pathlib import Path
 
-from feed_simulator.state.models import SourceState
+from data_simulator.state.models import SourceState
 
 logger = logging.getLogger(__name__)
 

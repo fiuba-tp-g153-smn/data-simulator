@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from feed_simulator.sources.radar.radar_grouping import group_radar_seed
+from data_simulator.sources.radar.radar_grouping import group_radar_seed
 
 
 def _paths(*names: str) -> list[Path]:

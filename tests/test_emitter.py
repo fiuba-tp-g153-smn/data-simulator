@@ -2,7 +2,7 @@
 
 import os
 
-from feed_simulator.core.emitter import FileEmitter
+from data_simulator.core.emitter import FileEmitter
 
 
 def _seed_file(tmp_path, name="seed.bin", content=b"data"):

@@ -1,7 +1,7 @@
 services:
-  feed-simulator:
+  data-simulator:
     build: .
-    container_name: feed-simulator
+    container_name: data-simulator
     restart: unless-stopped
     ports:
       - "${SIM_PORT:-6030}:6030"

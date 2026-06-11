@@ -4,7 +4,7 @@ from dataclasses import replace
 from datetime import datetime
 from pathlib import Path
 
-from feed_simulator.state.models import CursorState, LedgerEntry, SourceState
+from data_simulator.state.models import CursorState, LedgerEntry, SourceState
 
 
 def advance_state(

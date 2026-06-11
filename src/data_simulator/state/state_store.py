@@ -5,7 +5,7 @@ import logging
 import os
 from pathlib import Path
 
-from feed_simulator.state.models import SimState, state_from_dict, state_to_dict
+from data_simulator.state.models import SimState, state_from_dict, state_to_dict
 
 logger = logging.getLogger(__name__)
 

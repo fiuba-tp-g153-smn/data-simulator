@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 
 import pytest
 
-from feed_simulator.sources.goes_time import format_goes, parse_goes
+from data_simulator.sources.goes_time import format_goes, parse_goes
 
 
 def _utc(*args) -> datetime:

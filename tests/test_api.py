@@ -4,8 +4,8 @@ from pathlib import Path
 
 from fastapi.testclient import TestClient
 
-from feed_simulator.api.app import create_app
-from feed_simulator.config import Settings
+from data_simulator.api.app import create_app
+from data_simulator.config import Settings
 from tests.test_scheduler import NOW, FakeClock, FakeReplayer, _scheduler
 
 

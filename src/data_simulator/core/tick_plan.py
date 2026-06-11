@@ -5,7 +5,7 @@ from datetime import datetime
 from enum import Enum
 from pathlib import Path
 
-from feed_simulator.state.models import SourceState
+from data_simulator.state.models import SourceState
 
 
 class EmitMode(Enum):

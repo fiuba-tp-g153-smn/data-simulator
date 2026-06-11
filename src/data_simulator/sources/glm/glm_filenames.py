@@ -9,7 +9,7 @@ import re
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 
-from feed_simulator.sources.goes_time import format_goes, parse_goes
+from data_simulator.sources.goes_time import format_goes, parse_goes
 
 _GLM_PATTERN = re.compile(
     r"^CG_GLM-L2-GLMF-(?P<mode>M\d)_(?P<platform>G\d{2})"

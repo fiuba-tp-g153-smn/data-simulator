@@ -2,8 +2,8 @@
 
 from datetime import datetime, timedelta, timezone
 
-from feed_simulator.core.pruner import Pruner
-from feed_simulator.state.models import LedgerEntry, SourceState
+from data_simulator.core.pruner import Pruner
+from data_simulator.state.models import LedgerEntry, SourceState
 
 NOW = datetime(2026, 6, 11, 12, 0, tzinfo=timezone.utc)
 

@@ -4,12 +4,12 @@ from pathlib import Path
 
 import pytest
 
-from feed_simulator.sources.wrf.wrf_filenames import (
+from data_simulator.sources.wrf.wrf_filenames import (
     build_wrf_filename,
     derive_field3d_name,
     parse_wrf_filename,
 )
-from feed_simulator.sources.wrf.wrf_runs import discover_complete_runs
+from data_simulator.sources.wrf.wrf_runs import discover_complete_runs
 
 
 def _make_run(seed_dir: Path, init_tag: str, hours: int, skip_field3d_for=()):

@@ -4,18 +4,18 @@ import logging
 from datetime import datetime, timedelta
 from pathlib import Path
 
-from feed_simulator.core.emitter import FileEmitter
-from feed_simulator.core.ping_pong_cursor import PingPongCursor
-from feed_simulator.core.replayer import Replayer
-from feed_simulator.core.state_transitions import advance_state
-from feed_simulator.core.tick_plan import EmitMode, FileMapping, TickPlan
-from feed_simulator.sources.glm.glm_attr_rewriter import GlmAttrRewriter
-from feed_simulator.sources.glm.glm_filenames import (
+from data_simulator.core.emitter import FileEmitter
+from data_simulator.core.ping_pong_cursor import PingPongCursor
+from data_simulator.core.replayer import Replayer
+from data_simulator.core.state_transitions import advance_state
+from data_simulator.core.tick_plan import EmitMode, FileMapping, TickPlan
+from data_simulator.sources.glm.glm_attr_rewriter import GlmAttrRewriter
+from data_simulator.sources.glm.glm_filenames import (
     GlmFilenameParts,
     build_glm_filename,
     parse_glm_filename,
 )
-from feed_simulator.state.models import SourceState
+from data_simulator.state.models import SourceState
 
 logger = logging.getLogger(__name__)
 

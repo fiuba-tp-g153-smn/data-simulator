@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
-from feed_simulator.sources.radar.radar_filenames import parse_radar_filename
+from data_simulator.sources.radar.radar_filenames import parse_radar_filename
 
 logger = logging.getLogger(__name__)
 

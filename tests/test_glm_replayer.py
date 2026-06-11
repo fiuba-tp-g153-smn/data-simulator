@@ -5,15 +5,15 @@ from pathlib import Path
 
 import pytest
 
-from feed_simulator.core.emitter import FileEmitter
-from feed_simulator.sources.glm.glm_attr_rewriter import GlmAttrRewriter
-from feed_simulator.sources.glm.glm_filenames import (
+from data_simulator.core.emitter import FileEmitter
+from data_simulator.sources.glm.glm_attr_rewriter import GlmAttrRewriter
+from data_simulator.sources.glm.glm_filenames import (
     GlmFilenameParts,
     build_glm_filename,
     parse_glm_filename,
 )
-from feed_simulator.sources.glm.glm_replayer import GlmReplayer
-from feed_simulator.state.models import SourceState
+from data_simulator.sources.glm.glm_replayer import GlmReplayer
+from data_simulator.state.models import SourceState
 
 SEED_START = datetime(2026, 3, 2, 14, 0, tzinfo=timezone.utc)
 TICK = datetime(2026, 6, 11, 9, 10, tzinfo=timezone.utc)

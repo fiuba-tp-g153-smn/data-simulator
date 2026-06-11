@@ -4,17 +4,17 @@ import logging
 from datetime import datetime, timedelta
 from pathlib import Path
 
-from feed_simulator.core.emitter import FileEmitter
-from feed_simulator.core.ping_pong_cursor import PingPongCursor
-from feed_simulator.core.replayer import Replayer
-from feed_simulator.core.state_transitions import advance_state
-from feed_simulator.core.tick_plan import EmitMode, FileMapping, TickPlan
-from feed_simulator.sources.radar.radar_filenames import (
+from data_simulator.core.emitter import FileEmitter
+from data_simulator.core.ping_pong_cursor import PingPongCursor
+from data_simulator.core.replayer import Replayer
+from data_simulator.core.state_transitions import advance_state
+from data_simulator.core.tick_plan import EmitMode, FileMapping, TickPlan
+from data_simulator.sources.radar.radar_filenames import (
     build_radar_filename,
     parse_radar_filename,
 )
-from feed_simulator.sources.radar.radar_grouping import RadarScan, group_radar_seed
-from feed_simulator.state.models import CursorState, SourceState
+from data_simulator.sources.radar.radar_grouping import RadarScan, group_radar_seed
+from data_simulator.state.models import CursorState, SourceState
 
 logger = logging.getLogger(__name__)
 

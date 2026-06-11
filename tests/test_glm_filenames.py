@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 
 import pytest
 
-from feed_simulator.sources.glm.glm_filenames import (
+from data_simulator.sources.glm.glm_filenames import (
     GlmFilenameParts,
     build_glm_filename,
     parse_glm_filename,

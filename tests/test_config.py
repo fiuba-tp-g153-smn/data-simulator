@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from feed_simulator.config import ConfigError, Settings
+from data_simulator.config import ConfigError, Settings
 
 MISSING = Path("/nonexistent/settings.json")
 

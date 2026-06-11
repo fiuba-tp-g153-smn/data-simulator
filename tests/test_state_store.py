@@ -2,13 +2,13 @@
 
 from datetime import datetime, timezone
 
-from feed_simulator.state.models import (
+from data_simulator.state.models import (
     CursorState,
     LedgerEntry,
     SimState,
     SourceState,
 )
-from feed_simulator.state.state_store import JsonStateStore
+from data_simulator.state.state_store import JsonStateStore
 
 
 def _sample_state() -> SimState:

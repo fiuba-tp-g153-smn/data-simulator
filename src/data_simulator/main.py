@@ -4,8 +4,8 @@ import logging
 
 import uvicorn
 
-from feed_simulator.config import Settings
-from feed_simulator.factories import create_application
+from data_simulator.config import Settings
+from data_simulator.factories import create_application
 
 
 def run() -> None:
