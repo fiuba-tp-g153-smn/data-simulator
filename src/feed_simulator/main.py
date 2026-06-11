@@ -13,7 +13,7 @@ def run() -> None:
         level=logging.INFO,
         format="%(asctime)s %(levelname)s %(name)s %(message)s",
     )
-    settings = Settings.from_env()
+    settings = Settings.load()
     app = create_application(settings)
     uvicorn.run(app, host="0.0.0.0", port=settings.port, log_level="info")
 

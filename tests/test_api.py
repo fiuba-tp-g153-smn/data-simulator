@@ -12,7 +12,7 @@ from tests.test_scheduler import NOW, FakeClock, FakeReplayer, _scheduler
 def _client(tmp_path: Path):
     replayer = FakeReplayer(source_id="glm")
     scheduler, store = _scheduler(tmp_path, replayer)
-    settings = Settings.from_env(env={"SIM_DATA_ROOT": str(tmp_path)})
+    settings = Settings.load(env={"SIM_DATA_ROOT": str(tmp_path)})
     app = create_app(scheduler, store, settings, FakeClock(NOW))
     return TestClient(app), replayer
 

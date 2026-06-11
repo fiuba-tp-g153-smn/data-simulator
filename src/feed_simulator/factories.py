@@ -56,18 +56,25 @@ def _enabled_sources(
             dest_dir=dest,
             emitter=emitter,
             attr_rewriter=GlmAttrRewriter(),
+            accum_minutes=settings.glm_accum_minutes,
         )
         sources.append((settings.glm, replayer, dest))
     if settings.radar.enabled:
         dest = settings.data_root / "radar_h5"
         replayer = RadarReplayer(
-            seed_dir=settings.seed_dir / "radar_h5", dest_dir=dest, emitter=emitter
+            seed_dir=settings.seed_dir / "radar_h5",
+            dest_dir=dest,
+            emitter=emitter,
+            subvolume_offsets=settings.radar_subvolume_offsets,
         )
         sources.append((settings.radar, replayer, dest))
     if settings.wrf.enabled:
         dest = settings.data_root / "wrf_nc"
         replayer = WrfReplayer(
-            seed_dir=settings.seed_dir / "wrf_nc", dest_dir=dest, emitter=emitter
+            seed_dir=settings.seed_dir / "wrf_nc",
+            dest_dir=dest,
+            emitter=emitter,
+            expected_hours=settings.wrf_expected_hours,
         )
         sources.append((settings.wrf, replayer, dest))
     return sources

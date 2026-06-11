@@ -1,12 +1,32 @@
-"""Environment-driven settings for the feed simulator."""
+"""Simulator configuration: settings.json defaults, overridable via env vars.
 
+Same scheme as tiles-processor: tunables live in settings.json; every scalar
+can be overridden with a SIM_* environment variable (env > settings.json >
+built-in default). Deployment-level values (paths, port) are env-only.
+"""
+
+import json
+import logging
 import os
 from dataclasses import dataclass
 from pathlib import Path
 
+logger = logging.getLogger(__name__)
+
+_DEFAULT_SETTINGS_PATH = Path(__file__).parents[2] / "settings.json"
+
+_SOURCE_DEFAULTS = {
+    "glm": {"interval_minutes": 10, "retention_minutes": 180},
+    "radar": {"interval_minutes": 10, "retention_minutes": 180},
+    "wrf": {"interval_minutes": 360, "retention_minutes": 1080},
+}
+_DEFAULT_GLM_ACCUM_MINUTES = 10
+_DEFAULT_WRF_EXPECTED_HOURS = 72
+_DEFAULT_SUBVOLUME_OFFSETS = {"01": 0, "02": 20, "04": 40}
+
 
 class ConfigError(ValueError):
-    """Raised when the environment configuration is invalid."""
+    """Raised when the configuration is invalid."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -20,7 +40,7 @@ class SourceSettings:
 
 @dataclass(frozen=True, slots=True)
 class Settings:
-    """Immutable simulator configuration resolved from environment variables."""
+    """Immutable simulator configuration (settings.json + env overrides)."""
 
     data_root: Path
     seed_dir: Path
@@ -30,10 +50,18 @@ class Settings:
     glm: SourceSettings
     radar: SourceSettings
     wrf: SourceSettings
+    glm_accum_minutes: int
+    wrf_expected_hours: int
+    radar_subvolume_offsets: dict[str, int]
 
     @classmethod
-    def from_env(cls, env: dict[str, str] | None = None) -> "Settings":
+    def load(
+        cls, settings_path: Path | None = None, env: dict[str, str] | None = None
+    ) -> "Settings":
         env = dict(os.environ) if env is None else env
+        raw = _read_settings_file(settings_path, env)
+        resolve = _Resolver(raw, env)
+
         data_root = Path(env.get("SIM_DATA_ROOT", "/data"))
         settings = cls(
             data_root=data_root,
@@ -42,31 +70,94 @@ class Settings:
                 env.get("SIM_STATE_FILE", str(data_root / "sim_state/state.json"))
             ),
             port=int(env.get("SIM_PORT", "6030")),
-            link_mode=env.get("SIM_LINK_MODE", "hardlink"),
-            glm=_source_settings(env, "GLM", interval=10, retention=180),
-            radar=_source_settings(env, "RADAR", interval=10, retention=180),
-            wrf=_source_settings(env, "WRF", interval=360, retention=1080),
+            link_mode=resolve.text((), "link_mode", "SIM_LINK_MODE", "hardlink"),
+            glm=resolve.source("glm"),
+            radar=resolve.source("radar"),
+            wrf=resolve.source("wrf"),
+            glm_accum_minutes=resolve.number(
+                ("glm",), "accum_minutes", "SIM_GLM_ACCUM_MINUTES",
+                _DEFAULT_GLM_ACCUM_MINUTES,
+            ),
+            wrf_expected_hours=resolve.number(
+                ("wrf",), "expected_forecast_hours", "SIM_WRF_EXPECTED_HOURS",
+                _DEFAULT_WRF_EXPECTED_HOURS,
+            ),
+            radar_subvolume_offsets=resolve.offsets(),
         )
         settings.validate()
         return settings
 
     def validate(self) -> None:
         if self.link_mode not in ("hardlink", "copy"):
-            raise ConfigError(f"SIM_LINK_MODE must be hardlink|copy, got {self.link_mode}")
+            raise ConfigError(f"link_mode must be hardlink|copy, got {self.link_mode}")
         if not 0 < self.port < 65536:
             raise ConfigError(f"SIM_PORT out of range: {self.port}")
-        for name, source in (("GLM", self.glm), ("RADAR", self.radar), ("WRF", self.wrf)):
+        if self.glm_accum_minutes <= 0:
+            raise ConfigError("glm accum_minutes must be > 0")
+        if self.wrf_expected_hours <= 0:
+            raise ConfigError("wrf expected_forecast_hours must be > 0")
+        for name, source in (("glm", self.glm), ("radar", self.radar), ("wrf", self.wrf)):
             if source.interval_minutes <= 0:
-                raise ConfigError(f"SIM_{name}_INTERVAL_MINUTES must be > 0")
+                raise ConfigError(f"{name} interval_minutes must be > 0")
             if source.retention_minutes <= 0:
-                raise ConfigError(f"SIM_{name}_RETENTION_MINUTES must be > 0")
+                raise ConfigError(f"{name} retention_minutes must be > 0")
 
 
-def _source_settings(
-    env: dict[str, str], name: str, interval: int, retention: int
-) -> SourceSettings:
-    return SourceSettings(
-        enabled=env.get(f"SIM_{name}_ENABLED", "true").lower() == "true",
-        interval_minutes=int(env.get(f"SIM_{name}_INTERVAL_MINUTES", str(interval))),
-        retention_minutes=int(env.get(f"SIM_{name}_RETENTION_MINUTES", str(retention))),
-    )
+class _Resolver:
+    """Resolves one value as env override > settings.json > default."""
+
+    def __init__(self, raw: dict, env: dict[str, str]) -> None:
+        self._raw = raw
+        self._env = env
+
+    def source(self, name: str) -> SourceSettings:
+        defaults = _SOURCE_DEFAULTS[name]
+        prefix = f"SIM_{name.upper()}"
+        return SourceSettings(
+            enabled=self.flag((name,), "enabled", f"{prefix}_ENABLED", True),
+            interval_minutes=self.number(
+                (name,), "interval_minutes", f"{prefix}_INTERVAL_MINUTES",
+                defaults["interval_minutes"],
+            ),
+            retention_minutes=self.number(
+                (name,), "retention_minutes", f"{prefix}_RETENTION_MINUTES",
+                defaults["retention_minutes"],
+            ),
+        )
+
+    def text(self, section: tuple, key: str, env_name: str, default: str) -> str:
+        if env_name in self._env:
+            return self._env[env_name]
+        return str(self._from_json(section, key, default))
+
+    def number(self, section: tuple, key: str, env_name: str, default: int) -> int:
+        if env_name in self._env:
+            return int(self._env[env_name])
+        return int(self._from_json(section, key, default))
+
+    def flag(self, section: tuple, key: str, env_name: str, default: bool) -> bool:
+        if env_name in self._env:
+            return self._env[env_name].lower() == "true"
+        return bool(self._from_json(section, key, default))
+
+    def offsets(self) -> dict[str, int]:
+        raw = self._from_json(("radar",), "subvolume_offsets_seconds", None)
+        if raw is None:
+            return dict(_DEFAULT_SUBVOLUME_OFFSETS)
+        return {str(subvol): int(seconds) for subvol, seconds in raw.items()}
+
+    def _from_json(self, section: tuple, key: str, default):
+        node = self._raw
+        for part in section:
+            node = node.get(part, {})
+        value = node.get(key)
+        return default if value is None else value
+
+
+def _read_settings_file(settings_path: Path | None, env: dict[str, str]) -> dict:
+    if settings_path is None:
+        settings_path = Path(env.get("SIM_SETTINGS_PATH", str(_DEFAULT_SETTINGS_PATH)))
+    if not settings_path.exists():
+        logger.warning("settings.json not found at %s; using defaults", settings_path)
+        return {}
+    return json.loads(settings_path.read_text(encoding="utf-8"))

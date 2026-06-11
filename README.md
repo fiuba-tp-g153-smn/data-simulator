@@ -39,6 +39,22 @@ docker compose up --build -d
 
 The single bind mount must cover both `seed/` and the watched dirs (same filesystem ⇒ hardlinks work). If the data dir is owned by another user, add `user: "${UID}:${GID}"` to the service.
 
+## Configuration
+
+Same scheme as tiles-processor: tunables live in **`settings.json`** (mounted into the container — edit + restart, no rebuild); `.env` holds only deployment values (`TILES_DATA_DIR`, `SIM_PORT`). Every scalar in settings.json can also be overridden with an env var (env > settings.json > built-in default):
+
+| settings.json | env override |
+|---|---|
+| `link_mode` | `SIM_LINK_MODE` |
+| `<src>.enabled` | `SIM_<SRC>_ENABLED` |
+| `<src>.interval_minutes` | `SIM_<SRC>_INTERVAL_MINUTES` |
+| `<src>.retention_minutes` | `SIM_<SRC>_RETENTION_MINUTES` |
+| `glm.accum_minutes` | `SIM_GLM_ACCUM_MINUTES` |
+| `wrf.expected_forecast_hours` | `SIM_WRF_EXPECTED_HOURS` |
+| `radar.subvolume_offsets_seconds` | — (settings.json only) |
+
+`glm.accum_minutes` must match the producer's GLM window size. Paths are env-only: `SIM_DATA_ROOT`, `SIM_SEED_DIR`, `SIM_STATE_FILE`, `SIM_SETTINGS_PATH`.
+
 ## API (port 6030)
 
 - `GET /health` — liveness

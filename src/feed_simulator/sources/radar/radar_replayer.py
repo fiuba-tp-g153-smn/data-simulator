@@ -20,17 +20,24 @@ logger = logging.getLogger(__name__)
 
 # Distinct per-subvolume offsets keep image_ids unique for variables present in
 # more than one subvolume (e.g. DBZH lives in both 01 and 04).
-_SUBVOLUME_OFFSETS = {"01": 0, "02": 20, "04": 40}
+DEFAULT_SUBVOLUME_OFFSETS = {"01": 0, "02": 20, "04": 40}
 _FALLBACK_OFFSET = 50
 
 
 class RadarReplayer(Replayer):
     """Replays per-radar volume scans with timestamps rewritten to the tick."""
 
-    def __init__(self, seed_dir: Path, dest_dir: Path, emitter: FileEmitter) -> None:
+    def __init__(
+        self,
+        seed_dir: Path,
+        dest_dir: Path,
+        emitter: FileEmitter,
+        subvolume_offsets: dict[str, int] | None = None,
+    ) -> None:
         self._seed_dir = seed_dir
         self._dest_dir = dest_dir
         self._emitter = emitter
+        self._subvolume_offsets = subvolume_offsets or DEFAULT_SUBVOLUME_OFFSETS
         self._series: dict[str, tuple[RadarScan, ...]] = {}
 
     @property
@@ -81,7 +88,8 @@ class RadarReplayer(Replayer):
         mappings = []
         for src in scan.files:
             parts = parse_radar_filename(src.name)
-            new_ts = tick + timedelta(seconds=_subvolume_offset(parts.subvolume))
+            offset = _subvolume_offset(self._subvolume_offsets, parts.subvolume)
+            new_ts = tick + timedelta(seconds=offset)
             new_name = build_radar_filename(parts.with_timestamp(new_ts))
             mappings.append(
                 FileMapping(
@@ -93,8 +101,8 @@ class RadarReplayer(Replayer):
         return mappings
 
 
-def _subvolume_offset(subvolume: str) -> int:
-    offset = _SUBVOLUME_OFFSETS.get(subvolume)
+def _subvolume_offset(offsets: dict[str, int], subvolume: str) -> int:
+    offset = offsets.get(subvolume)
     if offset is None:
         logger.warning("Unknown subvolume %s; using fallback offset", subvolume)
         return _FALLBACK_OFFSET

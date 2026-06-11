@@ -1,0 +1,25 @@
+{
+  "link_mode": "hardlink",
+  "glm": {
+    "enabled": true,
+    "interval_minutes": 10,
+    "retention_minutes": 180,
+    "accum_minutes": 10
+  },
+  "radar": {
+    "enabled": true,
+    "interval_minutes": 10,
+    "retention_minutes": 180,
+    "subvolume_offsets_seconds": {
+      "01": 0,
+      "02": 20,
+      "04": 40
+    }
+  },
+  "wrf": {
+    "enabled": true,
+    "interval_minutes": 360,
+    "retention_minutes": 1080,
+    "expected_forecast_hours": 72
+  }
+}
