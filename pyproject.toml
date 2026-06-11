@@ -1,0 +1,10 @@
+[project]
+name = "feed-simulator"
+version = "0.1.0"
+description = "Replays static GLM/radar/WRF snapshots as live data for the tiles-processor pipeline"
+requires-python = ">=3.12"
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+asyncio_mode = "auto"

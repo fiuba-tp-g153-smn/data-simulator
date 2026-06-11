@@ -1,0 +1,23 @@
+services:
+  feed-simulator:
+    build: .
+    container_name: feed-simulator
+    restart: unless-stopped
+    ports:
+      - "${SIM_PORT:-6030}:6030"
+    environment:
+      SIM_DATA_ROOT: /data
+      SIM_GLM_ENABLED: ${SIM_GLM_ENABLED:-true}
+      SIM_GLM_INTERVAL_MINUTES: ${SIM_GLM_INTERVAL_MINUTES:-10}
+      SIM_GLM_RETENTION_MINUTES: ${SIM_GLM_RETENTION_MINUTES:-180}
+      SIM_RADAR_ENABLED: ${SIM_RADAR_ENABLED:-true}
+      SIM_RADAR_INTERVAL_MINUTES: ${SIM_RADAR_INTERVAL_MINUTES:-10}
+      SIM_RADAR_RETENTION_MINUTES: ${SIM_RADAR_RETENTION_MINUTES:-180}
+      SIM_WRF_ENABLED: ${SIM_WRF_ENABLED:-true}
+      SIM_WRF_INTERVAL_MINUTES: ${SIM_WRF_INTERVAL_MINUTES:-360}
+      SIM_WRF_RETENTION_MINUTES: ${SIM_WRF_RETENTION_MINUTES:-1080}
+      SIM_LINK_MODE: ${SIM_LINK_MODE:-hardlink}
+    volumes:
+      # Must be the tiles-processor data dir (seed/ + watched input dirs).
+      # A single mount keeps everything on one filesystem so hardlinks work.
+      - ${TILES_DATA_DIR:-../tiles-processor/data}:/data
