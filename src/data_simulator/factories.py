@@ -52,7 +52,7 @@ def _enabled_sources(
     if settings.glm.enabled:
         dest = settings.data_root / "glm_h5"
         replayer = GlmReplayer(
-            seed_dir=settings.seed_dir / "glm_h5",
+            seed_dir=settings.glm_seed_dir,
             dest_dir=dest,
             emitter=emitter,
             attr_rewriter=GlmAttrRewriter(),
@@ -62,7 +62,7 @@ def _enabled_sources(
     if settings.radar.enabled:
         dest = settings.data_root / "radar_h5"
         replayer = RadarReplayer(
-            seed_dir=settings.seed_dir / "radar_h5",
+            seed_dir=settings.radar_seed_dir,
             dest_dir=dest,
             emitter=emitter,
             subvolume_offsets=settings.radar_subvolume_offsets,
@@ -71,7 +71,7 @@ def _enabled_sources(
     if settings.wrf.enabled:
         dest = settings.data_root / "wrf_nc"
         replayer = WrfReplayer(
-            seed_dir=settings.seed_dir / "wrf_nc",
+            seed_dir=settings.wrf_seed_dir,
             dest_dir=dest,
             emitter=emitter,
             expected_hours=settings.wrf_expected_hours,

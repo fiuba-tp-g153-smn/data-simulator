@@ -44,6 +44,9 @@ class Settings:
 
     data_root: Path
     seed_dir: Path
+    glm_seed_dir: Path
+    radar_seed_dir: Path
+    wrf_seed_dir: Path
     state_file: Path
     port: int
     link_mode: str
@@ -63,9 +66,13 @@ class Settings:
         resolve = _Resolver(raw, env)
 
         data_root = Path(env.get("SIM_DATA_ROOT", "/data"))
+        seed_dir = Path(env.get("SIM_SEED_DIR", str(data_root / "seed")))
         settings = cls(
             data_root=data_root,
-            seed_dir=Path(env.get("SIM_SEED_DIR", str(data_root / "seed"))),
+            seed_dir=seed_dir,
+            glm_seed_dir=_seed_dir(env, "SIM_GLM_SEED_DIR", seed_dir, "glm_h5"),
+            radar_seed_dir=_seed_dir(env, "SIM_RADAR_SEED_DIR", seed_dir, "radar_h5"),
+            wrf_seed_dir=_seed_dir(env, "SIM_WRF_SEED_DIR", seed_dir, "wrf_nc"),
             state_file=Path(
                 env.get("SIM_STATE_FILE", str(data_root / "sim_state/state.json"))
             ),
@@ -152,6 +159,11 @@ class _Resolver:
             node = node.get(part, {})
         value = node.get(key)
         return default if value is None else value
+
+
+def _seed_dir(env: dict[str, str], var: str, seed_dir: Path, subdir: str) -> Path:
+    """Per-source seed dir: env override, else the ``<seed_dir>/<subdir>`` default."""
+    return Path(env.get(var, str(seed_dir / subdir)))
 
 
 def _read_settings_file(settings_path: Path | None, env: dict[str, str]) -> dict:

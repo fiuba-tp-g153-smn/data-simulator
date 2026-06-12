@@ -31,6 +31,41 @@ def test_builtin_defaults_without_settings_file():
     assert settings.radar_subvolume_offsets == {"01": 0, "02": 20, "04": 40}
 
 
+def test_seed_dirs_default_under_seed_root():
+    settings = Settings.load(settings_path=MISSING, env={})
+    assert settings.glm_seed_dir == Path("/data/seed/glm_h5")
+    assert settings.radar_seed_dir == Path("/data/seed/radar_h5")
+    assert settings.wrf_seed_dir == Path("/data/seed/wrf_nc")
+
+
+def test_seed_dirs_follow_sim_seed_dir_base():
+    settings = Settings.load(settings_path=MISSING, env={"SIM_SEED_DIR": "/master"})
+    assert settings.glm_seed_dir == Path("/master/glm_h5")
+    assert settings.radar_seed_dir == Path("/master/radar_h5")
+    assert settings.wrf_seed_dir == Path("/master/wrf_nc")
+
+
+def test_per_source_seed_dirs_override_independently():
+    settings = Settings.load(
+        settings_path=MISSING,
+        env={
+            "SIM_GLM_SEED_DIR": "/home/u/raw/glm_raw_data/glm_h5",
+            "SIM_RADAR_SEED_DIR": "/home/u/raw/radar_h5",
+            "SIM_WRF_SEED_DIR": "/home/u/raw/wrf_raw_data/wrf_nc",
+        },
+    )
+    assert settings.glm_seed_dir == Path("/home/u/raw/glm_raw_data/glm_h5")
+    assert settings.radar_seed_dir == Path("/home/u/raw/radar_h5")
+    assert settings.wrf_seed_dir == Path("/home/u/raw/wrf_raw_data/wrf_nc")
+    # An explicit per-source override wins over the SIM_SEED_DIR base.
+    mixed = Settings.load(
+        settings_path=MISSING,
+        env={"SIM_SEED_DIR": "/master", "SIM_RADAR_SEED_DIR": "/elsewhere/radar"},
+    )
+    assert mixed.glm_seed_dir == Path("/master/glm_h5")
+    assert mixed.radar_seed_dir == Path("/elsewhere/radar")
+
+
 def test_repo_settings_json_is_valid():
     settings = Settings.load(env={})  # default path = repo settings.json
     assert settings.glm.enabled is True

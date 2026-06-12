@@ -7,10 +7,18 @@ services:
       - "${SIM_PORT:-6030}:6030"
     environment:
       SIM_DATA_ROOT: /data
+      SIM_GLM_SEED_DIR: /seed/glm_h5
+      SIM_RADAR_SEED_DIR: /seed/radar_h5
+      SIM_WRF_SEED_DIR: /seed/wrf_nc
     volumes:
-      # Must be the tiles-processor data dir (seed/ + watched input dirs).
-      # A single mount keeps everything on one filesystem so hardlinks work.
-      - ${TILES_DATA_DIR:-../tiles-processor/data}:/data
+      # Read-only master raw-data folders — the simulator only ever reads these.
+      - ${GLM_SEED_DIR:?set GLM_SEED_DIR}:/seed/glm_h5:ro
+      - ${RADAR_SEED_DIR:?set RADAR_SEED_DIR}:/seed/radar_h5:ro
+      - ${WRF_SEED_DIR:?set WRF_SEED_DIR}:/seed/wrf_nc:ro
+      # tiles-processor data dir (the producer's watched dirs + sim_state).
+      # Writable; keep it on the same filesystem as the seed folders so
+      # radar/WRF can hardlink (else emission falls back to copy).
+      - ${TILES_DATA_DIR:?set TILES_DATA_DIR}:/data
       # Tunables live here; edit + restart, no rebuild. Any value can also be
       # overridden with a SIM_* env var (see README).
       - ./settings.json:/app/settings.json:ro

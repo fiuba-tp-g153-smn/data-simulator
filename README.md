@@ -14,30 +14,59 @@ The tiles-processor producer identifies images purely by **filename-derived time
 
 Incomplete WRF runs in the seed are excluded automatically. Emissions older than the retention window are pruned (only files the simulator itself created — tracked in a ledger — are ever deleted). State (cursors, last tick, ledger) persists in `<data>/sim_state/state.json`, so restarts resume where they left off; on startup the most recent aligned tick is emitted immediately (catch-up).
 
-## One-time seed migration
+## Quick start
 
-The snapshots must move out of the watched dirs into `seed/` (run with the tiles-processor producer stopped):
-
-```bash
-cd ../tiles-processor/data
-mkdir -p seed sim_state
-mv glm_h5  seed/glm_h5
-mv radar_h5 seed/radar_h5
-mv wrf_nc  seed/wrf_nc
-mkdir -p glm_h5 wrf_nc radar_h5
-for d in seed/radar_h5/*/; do mkdir -p "radar_h5/$(basename "$d")"; done
-```
-
-The producer keeps watching `data/{glm_h5,radar_h5,wrf_nc}` — no tiles-processor config changes.
-
-## Run
+Prerequisites: Docker (with Compose), `make`, your **read-only master raw-data folders** on the VPS, and the **tiles-processor data dir** the producer watches (a Docker named volume, or any host dir).
 
 ```bash
-cp .env.example .env          # set TILES_DATA_DIR to the tiles-processor data dir
-docker compose up --build -d
+# 1. Clone
+git clone <repo-url> data-simulator
+cd data-simulator
+
+# 2. Configure — point at your read-only master folders and the tiles-processor data
+cp .env.example .env
+$EDITOR .env     # set GLM_SEED_DIR / RADAR_SEED_DIR / WRF_SEED_DIR + TILES_DATA_DIR
+
+# 3. Boot
+make up          # build + start the container (detached)
+
+# 4. Verify it's emitting
+make status      # per-source cursors, last/next tick, emitted counts
+make logs        # follow the tick logs
 ```
 
-The single bind mount must cover both `seed/` and the watched dirs (same filesystem ⇒ hardlinks work). If the data dir is owned by another user, add `user: "${UID}:${GID}"` to the service.
+No data is moved or migrated — the master folders are mounted **read-only** and only ever read. After `make up` the simulator immediately emits the most recent aligned tick for every source (catch-up), then keeps ticking on schedule (GLM/radar every 10 min, WRF every 6 h). The tiles-processor producer picks the new files up on its next scan — no tiles-processor config changes, it keeps watching `data/{glm_h5,radar_h5,wrf_nc}`.
+
+### Hardlink vs copy
+
+The emitter hardlinks radar/WRF (instant, zero extra disk) **only when the master folders and the tiles-processor data dir are on the same filesystem**. On the Hetzner deployment they are not — the master raw data sits on the root partition while the Docker volumes live on a mounted block volume — so `settings.json` ships with `"link_mode": "copy"`. (Cross-filesystem hardlinks fail with `EXDEV`; symlinks can't bridge it either, because the producer container doesn't mount the master folders.) GLM always copies regardless (it rewrites the file's time attrs).
+
+Disk cost of copy mode (on the volume): each WRF tick copies one full run (146 files, ~6.3 GB). Every tick the simulator copies the **new** run in and then prunes its own emissions older than the retention window — disk is bounded, not append-only (it only ever deletes files it created, never the master or tiles-processor's outputs). Because the prune is inclusive (`emitted_at >= now − retention`) and runs *after* the copy, the default `wrf.retention_minutes: 1080` (18 h, 6 h ticks) keeps **4 runs (~25 GB)** at steady state and peaks at **5 runs (~31 GB)** for the moment between copy and prune. Size the volume for the peak, or lower `wrf.retention_minutes` (720 → 3 runs, 360 → 2 runs). Radar/GLM copies are small. If you ever move the master data onto the same volume, flip `link_mode` back to `hardlink` and the WRF copies become free hardlinks.
+
+> Note: pruning relies on the ledger in `sim_state/state.json` (on the volume). If that state file is deleted, the simulator forgets its past emissions and won't prune them — you'd clean up stale `wrf_nc/*` copies manually.
+
+If the data dir is owned by another user, add `user: "${UID}:${GID}"` to the service in `docker-compose.yaml`.
+
+Finding the tiles-processor volume path (Coolify/Docker named volume):
+
+```bash
+docker volume ls | grep tiles-data
+# → use /var/lib/docker/volumes/<name>/_data as TILES_DATA_DIR
+```
+
+### Make targets
+
+| Target | What it does |
+|---|---|
+| `make up` | Build and start the simulator (detached). |
+| `make down` | Stop and remove the container. |
+| `make restart` | Restart — picks up `settings.json` edits without a rebuild. |
+| `make logs` | Follow the tick logs. |
+| `make status` | Pretty-print `/status` for all sources. |
+| `make tick SRC=radar` | Force a tick now for one source (`glm`\|`radar`\|`wrf`). |
+| `make install` | Create the local `.venv` and install dev deps. |
+| `make test` | Run the test suite with coverage (same command as CI). |
+| `make clean` | Stop the container and remove orphans. |
 
 ## Configuration
 
@@ -53,7 +82,21 @@ Same scheme as tiles-processor: tunables live in **`settings.json`** (mounted in
 | `wrf.expected_forecast_hours` | `SIM_WRF_EXPECTED_HOURS` |
 | `radar.subvolume_offsets_seconds` | — (settings.json only) |
 
-`glm.accum_minutes` must match the producer's GLM window size. Paths are env-only: `SIM_DATA_ROOT`, `SIM_SEED_DIR`, `SIM_STATE_FILE`, `SIM_SETTINGS_PATH`.
+`glm.accum_minutes` must match the producer's GLM window size.
+
+Paths are env-only (not in settings.json):
+
+| Env var | Default | Points at |
+|---|---|---|
+| `SIM_DATA_ROOT` | `/data` | Emission target root (producer's watched dirs live here). |
+| `SIM_GLM_SEED_DIR` | `$SIM_SEED_DIR/glm_h5` | Master GLM folder (`*.nc`). |
+| `SIM_RADAR_SEED_DIR` | `$SIM_SEED_DIR/radar_h5` | Master radar folder (`RMAx/*.H5`). |
+| `SIM_WRF_SEED_DIR` | `$SIM_SEED_DIR/wrf_nc` | Master WRF folder (`*FIELD2D*.nc` + FIELD3D siblings). |
+| `SIM_SEED_DIR` | `$SIM_DATA_ROOT/seed` | Base for the three seed defaults above; set this alone if all three sit under one root. |
+| `SIM_STATE_FILE` | `$SIM_DATA_ROOT/sim_state/state.json` | Cursor/ledger state (must be writable). |
+| `SIM_SETTINGS_PATH` | `./settings.json` | Tunables file. |
+
+The compose file maps your three host folders to `/seed/glm_h5`, `/seed/radar_h5`, `/seed/wrf_nc` (read-only) and sets the matching `SIM_*_SEED_DIR` vars, so the host folders can live anywhere.
 
 ## API (port 6030)
 
@@ -65,12 +108,14 @@ Same scheme as tiles-processor: tunables live in **`settings.json`** (mounted in
 
 - GLM windows become eligible for the producer ~30 s after the tick (its safety lag) and are discovered on its next 5-min scan — up to ~5 min latency is normal.
 - At a ping-pong turnaround the weather plays in reverse for one pass; intra-window GLM file order is reversed too so motion stays continuous.
-- `SIM_LINK_MODE=copy` exists as an escape hatch should the pipeline ever start mutating its input files in place (hardlinks share inodes with the seed).
+- `link_mode` is `copy` by default for the cross-filesystem Hetzner layout (see [Hardlink vs copy](#hardlink-vs-copy)); `hardlink` is the better choice when master data and the data volume share a filesystem.
 - Filename formats are mirrored from `tiles-processor/src/models/{radar_config,wrf_config}.py`, `src/models/glm_folder_config.py`; window semantics from `src/data_sources/glm_folder.py`; attr contract from `src/services/glm_aggregation.py`.
 
 ## Development
 
 ```bash
-python3 -m venv .venv && .venv/bin/pip install -r requirements-dev.txt
-.venv/bin/python -m pytest
+make install     # python3 -m venv .venv && pip install -r requirements-dev.txt
+make test        # pytest with coverage (reports/)
 ```
+
+CI mirrors this: `.github/workflows/test.yml` runs gitleaks + the test suite on every branch/PR; `.github/workflows/security.yml` re-runs the suite and a Trivy image scan on `main`.

@@ -1,5 +1,5 @@
 {
-  "link_mode": "hardlink",
+  "link_mode": "copy",
   "glm": {
     "enabled": true,
     "interval_minutes": 10,
