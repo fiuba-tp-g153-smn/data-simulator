@@ -12,7 +12,7 @@ The tiles-processor producer identifies images purely by **filename-derived time
 | Radar  | every 10 min          | one scan per (radar, subvolume) series, all variables                                                   | hardlink with rewritten timestamp (+0s/+20s/+40s per subvolume 01/02/04 to keep image_ids unique)                                                            |
 | WRF    | 00/06/12/18           | one complete run (F000–F072, FIELD2D **and** FIELD3D = 146 files) with `INIT_TAG` rewritten to the slot | hardlink (a run is ~11.5 GB; links are instant and cost no disk)                                                                                             |
 
-Incomplete WRF runs in the seed are excluded automatically. Emissions older than the retention window are pruned (only files the simulator itself created — tracked in a ledger — are ever deleted). State (cursors, last tick, ledger) persists in `<data>/sim_state/state.json`, so restarts resume where they left off; on startup the most recent aligned tick is emitted immediately (catch-up).
+Incomplete WRF runs in the seed are excluded automatically. Old emissions are pruned by a hybrid **ring + floor** rule: the newest `retention_ticks` ticks per source are always kept (count-based, so a slow/stopped consumer is never pruned out from under it), and nothing younger than `retention_minutes` (the min-age floor) is ever deleted — an emission is removed only when it is *both* beyond the ring and older than the floor (only files the simulator itself created — tracked in a ledger — are ever deleted). State (cursors, last tick, ledger) persists in `<data>/sim_state/state.json`, so restarts resume where they left off; on startup the most recent aligned tick is emitted immediately (catch-up).
 
 ## Quick start
 
@@ -41,7 +41,7 @@ No data is moved or migrated — the master folders are mounted **read-only** an
 
 The emitter hardlinks radar/WRF (instant, zero extra disk) **only when the master folders and the tiles-processor data dir are on the same filesystem**. On the Hetzner deployment they are not — the master raw data sits on the root partition while the Docker volumes live on a mounted block volume — so `settings.json` ships with `"link_mode": "copy"`. (Cross-filesystem hardlinks fail with `EXDEV`; symlinks can't bridge it either, because the producer container doesn't mount the master folders.) GLM always copies regardless (it rewrites the file's time attrs).
 
-Disk cost of copy mode (on the volume): each WRF tick copies one full run (146 files, ~6.3 GB). Every tick the simulator copies the **new** run in and then prunes its own emissions older than the retention window — disk is bounded, not append-only (it only ever deletes files it created, never the master or tiles-processor's outputs). Because the prune is inclusive (`emitted_at >= now − retention`) and runs *after* the copy, the default `wrf.retention_minutes: 1080` (18 h, 6 h ticks) keeps **4 runs (~25 GB)** at steady state and peaks at **5 runs (~31 GB)** for the moment between copy and prune. Size the volume for the peak, or lower `wrf.retention_minutes` (720 → 3 runs, 360 → 2 runs). Radar/GLM copies are small. If you ever move the master data onto the same volume, flip `link_mode` back to `hardlink` and the WRF copies become free hardlinks.
+Disk cost of copy mode (on the volume): each WRF tick copies one full run (146 files, ~6.3 GB). Every tick the simulator copies the **new** run in and then prunes its own emissions older than the retention window — disk is bounded, not append-only (it only ever deletes files it created, never the master or tiles-processor's outputs). Because retention is a count-based ring (keep the newest `wrf.retention_ticks` runs) that prunes *after* the copy, the default `wrf.retention_ticks: 5` keeps **5 runs (~31 GB)** at steady state and peaks at **6 runs (~38 GB)** for the moment between copy and prune. Size the volume for the peak, or lower `wrf.retention_ticks` (4 → ~25 GB, 3 → ~19 GB). The `wrf.retention_minutes: 1080` floor is a safety net that only binds if ticks ever arrive faster than the 6 h interval — at the normal cadence the ring is the active bound. Radar/GLM copies are small. If you ever move the master data onto the same volume, flip `link_mode` back to `hardlink` and the WRF copies become free hardlinks.
 
 > Note: pruning relies on the ledger in `sim_state/state.json` (on the volume). If that state file is deleted, the simulator forgets its past emissions and won't prune them — you'd clean up stale `wrf_nc/*` copies manually.
 
@@ -78,6 +78,7 @@ Same scheme as tiles-processor: tunables live in **`settings.json`** (mounted in
 | `<src>.enabled` | `SIM_<SRC>_ENABLED` |
 | `<src>.interval_minutes` | `SIM_<SRC>_INTERVAL_MINUTES` |
 | `<src>.retention_minutes` | `SIM_<SRC>_RETENTION_MINUTES` |
+| `<src>.retention_ticks` | `SIM_<SRC>_RETENTION_TICKS` |
 | `glm.accum_minutes` | `SIM_GLM_ACCUM_MINUTES` |
 | `wrf.expected_forecast_hours` | `SIM_WRF_EXPECTED_HOURS` |
 | `radar.subvolume_offsets_seconds` | — (settings.json only) |

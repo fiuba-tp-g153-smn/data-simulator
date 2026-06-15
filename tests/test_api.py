@@ -29,6 +29,7 @@ def test_status_reports_source(tmp_path):
     source = payload["sources"]["glm"]
     assert source["interval_minutes"] == 10
     assert source["retention_minutes"] == 180
+    assert source["retention_ticks"] == 24
     assert source["last_tick"] is not None
     assert source["next_tick"] == "2026-06-11T09:20:00Z"
     assert source["last_error"] is None

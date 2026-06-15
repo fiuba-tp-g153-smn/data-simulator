@@ -38,7 +38,11 @@ def create_scheduler(
         sources[replayer.source_id] = ScheduledSource(
             replayer=replayer,
             interval_minutes=source_settings.interval_minutes,
-            pruner=Pruner((dest_dir,), source_settings.retention_minutes),
+            pruner=Pruner(
+                (dest_dir,),
+                source_settings.retention_minutes,
+                source_settings.retention_ticks,
+            ),
         )
     if not sources:
         raise ValueError("No sources enabled — nothing to simulate")

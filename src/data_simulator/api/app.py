@@ -68,7 +68,8 @@ def _source_status(
     clock: Clock,
 ) -> SourceStatus:
     interval = scheduler.interval_minutes(source_id)
-    retention = getattr(settings, source_id).retention_minutes
+    source_settings = getattr(settings, source_id)
+    retention = source_settings.retention_minutes
     return SourceStatus(
         enabled=True,
         interval_minutes=interval,
@@ -81,5 +82,6 @@ def _source_status(
         emitted_total=state.emitted_total,
         ledger_size=len(state.ledger),
         retention_minutes=retention,
+        retention_ticks=source_settings.retention_ticks,
         last_error=state.last_error,
     )

@@ -19,6 +19,7 @@ class SourceStatus(BaseModel):
     emitted_total: int
     ledger_size: int
     retention_minutes: int
+    retention_ticks: int
     last_error: str | None
 
 

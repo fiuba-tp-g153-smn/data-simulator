@@ -55,7 +55,7 @@ def _scheduler(tmp_path, replayer, now=NOW):
     out = tmp_path / "out"
     out.mkdir(exist_ok=True)
     source = ScheduledSource(
-        replayer=replayer, interval_minutes=10, pruner=Pruner((out,), 180)
+        replayer=replayer, interval_minutes=10, pruner=Pruner((out,), 180, 24)
     )
     return TickScheduler({replayer.source_id: source}, store, FakeClock(now)), store
 

@@ -16,9 +16,9 @@ logger = logging.getLogger(__name__)
 _DEFAULT_SETTINGS_PATH = Path(__file__).parents[2] / "settings.json"
 
 _SOURCE_DEFAULTS = {
-    "glm": {"interval_minutes": 10, "retention_minutes": 180},
-    "radar": {"interval_minutes": 10, "retention_minutes": 180},
-    "wrf": {"interval_minutes": 360, "retention_minutes": 1080},
+    "glm": {"interval_minutes": 10, "retention_minutes": 180, "retention_ticks": 24},
+    "radar": {"interval_minutes": 10, "retention_minutes": 180, "retention_ticks": 24},
+    "wrf": {"interval_minutes": 360, "retention_minutes": 1080, "retention_ticks": 5},
 }
 _DEFAULT_GLM_ACCUM_MINUTES = 10
 _DEFAULT_WRF_EXPECTED_HOURS = 72
@@ -35,7 +35,8 @@ class SourceSettings:
 
     enabled: bool
     interval_minutes: int
-    retention_minutes: int
+    retention_minutes: int  # min-age floor: data younger than this is always kept
+    retention_ticks: int  # ring size: the newest N ticks are always kept
 
 
 @dataclass(frozen=True, slots=True)
@@ -108,6 +109,8 @@ class Settings:
                 raise ConfigError(f"{name} interval_minutes must be > 0")
             if source.retention_minutes <= 0:
                 raise ConfigError(f"{name} retention_minutes must be > 0")
+            if source.retention_ticks <= 0:
+                raise ConfigError(f"{name} retention_ticks must be > 0")
 
 
 class _Resolver:
@@ -129,6 +132,10 @@ class _Resolver:
             retention_minutes=self.number(
                 (name,), "retention_minutes", f"{prefix}_RETENTION_MINUTES",
                 defaults["retention_minutes"],
+            ),
+            retention_ticks=self.number(
+                (name,), "retention_ticks", f"{prefix}_RETENTION_TICKS",
+                defaults["retention_ticks"],
             ),
         )
 

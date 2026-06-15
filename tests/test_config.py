@@ -25,7 +25,9 @@ def test_builtin_defaults_without_settings_file():
     assert settings.link_mode == "hardlink"
     assert settings.glm.interval_minutes == 10
     assert settings.radar.retention_minutes == 180
+    assert settings.radar.retention_ticks == 24
     assert settings.wrf.interval_minutes == 360
+    assert settings.wrf.retention_ticks == 5
     assert settings.glm_accum_minutes == 10
     assert settings.wrf_expected_hours == 72
     assert settings.radar_subvolume_offsets == {"01": 0, "02": 20, "04": 40}
@@ -70,6 +72,7 @@ def test_repo_settings_json_is_valid():
     settings = Settings.load(env={})  # default path = repo settings.json
     assert settings.glm.enabled is True
     assert settings.wrf.retention_minutes == 1080
+    assert settings.wrf.retention_ticks == 5
 
 
 def test_settings_json_values_used(tmp_path):
@@ -141,3 +144,13 @@ def test_invalid_accum_minutes_rejected(tmp_path):
     path = _write_settings(tmp_path, {"glm": {"accum_minutes": 0}})
     with pytest.raises(ConfigError):
         Settings.load(settings_path=path, env={})
+
+
+def test_retention_ticks_env_override():
+    settings = Settings.load(settings_path=MISSING, env={"SIM_WRF_RETENTION_TICKS": "8"})
+    assert settings.wrf.retention_ticks == 8
+
+
+def test_invalid_retention_ticks_rejected():
+    with pytest.raises(ConfigError):
+        Settings.load(settings_path=MISSING, env={"SIM_WRF_RETENTION_TICKS": "0"})

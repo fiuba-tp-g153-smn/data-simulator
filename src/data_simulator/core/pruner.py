@@ -10,28 +10,50 @@ logger = logging.getLogger(__name__)
 
 
 class Pruner:
-    """Deletes ledgered emissions older than the retention window.
+    """Hybrid retention over the simulator's own emissions.
+
+    An emission is kept if it falls in the newest ``retention_ticks`` ticks
+    (the count-based ring) OR is younger than ``retention_minutes`` (the
+    min-age floor); it is deleted only when it is both beyond the ring and
+    older than the floor. The ring bounds disk and survives a stalled consumer
+    (a static snapshot is never pruned out from under it); the floor guarantees
+    a minimum lifetime regardless of tick rate.
 
     Only paths under the configured emission directories are ever unlinked —
     the seed and any file the simulator did not create are untouchable.
     """
 
-    def __init__(self, emission_dirs: tuple[Path, ...], retention_minutes: int) -> None:
+    def __init__(
+        self,
+        emission_dirs: tuple[Path, ...],
+        retention_minutes: int,
+        retention_ticks: int,
+    ) -> None:
         if retention_minutes <= 0:
             raise ValueError("retention_minutes must be > 0")
+        if retention_ticks <= 0:
+            raise ValueError("retention_ticks must be > 0")
         self._emission_dirs = tuple(d.resolve() for d in emission_dirs)
-        self._retention = timedelta(minutes=retention_minutes)
+        self._min_age = timedelta(minutes=retention_minutes)
+        self._ring_ticks = retention_ticks
 
     def sweep(self, state: SourceState, now: datetime) -> SourceState:
-        cutoff = now - self._retention
+        floor_cutoff = now - self._min_age
+        ticks_newest_first = sorted({e.emitted_at for e in state.ledger}, reverse=True)
+        ring = set(ticks_newest_first[: self._ring_ticks])
         kept = []
         for entry in state.ledger:
-            if entry.emitted_at >= cutoff:
+            if entry.emitted_at in ring or entry.emitted_at >= floor_cutoff:
                 kept.append(entry)
                 continue
             self._delete(Path(entry.path))
         if len(kept) != len(state.ledger):
-            logger.info("Pruned %d emissions", len(state.ledger) - len(kept))
+            logger.info(
+                "Pruned %d emissions (kept newest %d ticks + younger than %s)",
+                len(state.ledger) - len(kept),
+                self._ring_ticks,
+                self._min_age,
+            )
         return SourceState(
             cursors=state.cursors,
             last_tick=state.last_tick,
