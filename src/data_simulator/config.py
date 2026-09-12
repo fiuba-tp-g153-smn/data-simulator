@@ -71,9 +71,9 @@ class Settings:
         settings = cls(
             data_root=data_root,
             seed_dir=seed_dir,
-            glm_seed_dir=_seed_dir(env, "SIM_GLM_SEED_DIR", seed_dir, "glm_h5"),
-            radar_seed_dir=_seed_dir(env, "SIM_RADAR_SEED_DIR", seed_dir, "radar_h5"),
-            wrf_seed_dir=_seed_dir(env, "SIM_WRF_SEED_DIR", seed_dir, "wrf_nc"),
+            glm_seed_dir=_seed_dir(env, "SIM_GLM_SEED_DIR", seed_dir, "goes19-glm"),
+            radar_seed_dir=_seed_dir(env, "SIM_RADAR_SEED_DIR", seed_dir, "radar-sinarame"),
+            wrf_seed_dir=_seed_dir(env, "SIM_WRF_SEED_DIR", seed_dir, "wrf-arg4k"),
             state_file=Path(
                 env.get("SIM_STATE_FILE", str(data_root / "sim_state/state.json"))
             ),

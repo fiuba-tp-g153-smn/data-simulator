@@ -54,7 +54,7 @@ def _enabled_sources(
 ) -> list[tuple[SourceSettings, Replayer, Path]]:
     sources: list[tuple[SourceSettings, Replayer, Path]] = []
     if settings.glm.enabled:
-        dest = settings.data_root / "glm_h5"
+        dest = settings.data_root / "goes19-glm"
         replayer = GlmReplayer(
             seed_dir=settings.glm_seed_dir,
             dest_dir=dest,
@@ -64,7 +64,7 @@ def _enabled_sources(
         )
         sources.append((settings.glm, replayer, dest))
     if settings.radar.enabled:
-        dest = settings.data_root / "radar_h5"
+        dest = settings.data_root / "radar-sinarame"
         replayer = RadarReplayer(
             seed_dir=settings.radar_seed_dir,
             dest_dir=dest,
@@ -73,7 +73,7 @@ def _enabled_sources(
         )
         sources.append((settings.radar, replayer, dest))
     if settings.wrf.enabled:
-        dest = settings.data_root / "wrf_nc"
+        dest = settings.data_root / "wrf-arg4k"
         replayer = WrfReplayer(
             seed_dir=settings.wrf_seed_dir,
             dest_dir=dest,

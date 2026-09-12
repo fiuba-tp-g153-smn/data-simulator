@@ -6,7 +6,7 @@ from data_simulator.sources.radar.radar_grouping import group_radar_seed
 
 
 def _paths(*names: str) -> list[Path]:
-    return [Path("/seed/radar_h5") / n.split("_")[0] / n for n in names]
+    return [Path("/seed/radar-sinarame") / n.split("_")[0] / n for n in names]
 
 
 def test_groups_by_radar_and_subvolume():

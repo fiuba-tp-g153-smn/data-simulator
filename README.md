@@ -20,7 +20,7 @@ Prerequisites: Docker (with Compose), `make`, your **read-only master raw-data f
 
 ```bash
 # 1. Clone
-git clone <repo-url> data-simulator
+git clone git@github.com:fiuba-tp-g153-smn/data-simulator.git
 cd data-simulator
 
 # 2. Configure — point at your read-only master folders and the tiles-processor data
@@ -35,7 +35,7 @@ make status      # per-source cursors, last/next tick, emitted counts
 make logs        # follow the tick logs
 ```
 
-No data is moved or migrated — the master folders are mounted **read-only** and only ever read. After `make up` the simulator immediately emits the most recent aligned tick for every source (catch-up), then keeps ticking on schedule (GLM/radar every 10 min, WRF every 6 h). The tiles-processor producer picks the new files up on its next scan — no tiles-processor config changes, it keeps watching `data/{glm_h5,radar_h5,wrf_nc}`.
+No data is moved or migrated — the master folders are mounted **read-only** and only ever read. After `make up` the simulator immediately emits the most recent aligned tick for every source (catch-up), then keeps ticking on schedule (GLM/radar every 10 min, WRF every 6 h). The tiles-processor producer picks the new files up on its next scan — no tiles-processor config changes, it keeps watching `data/{goes19-glm,radar-sinarame,wrf-arg4k}`.
 
 ### Hardlink vs copy
 
@@ -43,7 +43,7 @@ The emitter hardlinks radar/WRF (instant, zero extra disk) **only when the maste
 
 Disk cost of copy mode (on the volume): each WRF tick copies one full run (146 files, ~6.3 GB). Every tick the simulator copies the **new** run in and then prunes its own emissions older than the retention window — disk is bounded, not append-only (it only ever deletes files it created, never the master or tiles-processor's outputs). Because retention is a count-based ring (keep the newest `wrf.retention_ticks` runs) that prunes *after* the copy, the default `wrf.retention_ticks: 5` keeps **5 runs (~31 GB)** at steady state and peaks at **6 runs (~38 GB)** for the moment between copy and prune. Size the volume for the peak, or lower `wrf.retention_ticks` (4 → ~25 GB, 3 → ~19 GB). The `wrf.retention_minutes: 1080` floor is a safety net that only binds if ticks ever arrive faster than the 6 h interval — at the normal cadence the ring is the active bound. Radar/GLM copies are small. If you ever move the master data onto the same volume, flip `link_mode` back to `hardlink` and the WRF copies become free hardlinks.
 
-> Note: pruning relies on the ledger in `sim_state/state.json` (on the volume). If that state file is deleted, the simulator forgets its past emissions and won't prune them — you'd clean up stale `wrf_nc/*` copies manually.
+> Note: pruning relies on the ledger in `sim_state/state.json` (on the volume). If that state file is deleted, the simulator forgets its past emissions and won't prune them — you'd clean up stale `wrf-arg4k/*` copies manually.
 
 If the data dir is owned by another user, add `user: "${UID}:${GID}"` to the service in `docker-compose.yaml`.
 
@@ -67,6 +67,7 @@ docker volume ls | grep tiles-data
 | `make install` | Create the local `.venv` and install dev deps. |
 | `make test` | Run the test suite with coverage (same command as CI). |
 | `make clean` | Stop the container and remove orphans. |
+| `make help` | List the targets with their descriptions. |
 
 ## Configuration
 
@@ -90,20 +91,20 @@ Paths are env-only (not in settings.json):
 | Env var | Default | Points at |
 |---|---|---|
 | `SIM_DATA_ROOT` | `/data` | Emission target root (producer's watched dirs live here). |
-| `SIM_GLM_SEED_DIR` | `$SIM_SEED_DIR/glm_h5` | Master GLM folder (`*.nc`). |
-| `SIM_RADAR_SEED_DIR` | `$SIM_SEED_DIR/radar_h5` | Master radar folder (`RMAx/*.H5`). |
-| `SIM_WRF_SEED_DIR` | `$SIM_SEED_DIR/wrf_nc` | Master WRF folder (`*FIELD2D*.nc` + FIELD3D siblings). |
+| `SIM_GLM_SEED_DIR` | `$SIM_SEED_DIR/goes19-glm` | Master GLM folder (`*.nc`). |
+| `SIM_RADAR_SEED_DIR` | `$SIM_SEED_DIR/radar-sinarame` | Master radar folder (`RMAx/*.H5`). |
+| `SIM_WRF_SEED_DIR` | `$SIM_SEED_DIR/wrf-arg4k` | Master WRF folder (`*FIELD2D*.nc` + FIELD3D siblings). |
 | `SIM_SEED_DIR` | `$SIM_DATA_ROOT/seed` | Base for the three seed defaults above; set this alone if all three sit under one root. |
 | `SIM_STATE_FILE` | `$SIM_DATA_ROOT/sim_state/state.json` | Cursor/ledger state (must be writable). |
 | `SIM_SETTINGS_PATH` | `./settings.json` | Tunables file. |
 
-The compose file maps your three host folders to `/seed/glm_h5`, `/seed/radar_h5`, `/seed/wrf_nc` (read-only) and sets the matching `SIM_*_SEED_DIR` vars, so the host folders can live anywhere.
+The compose file maps your three host folders to `/seed/goes19-glm`, `/seed/radar-sinarame`, `/seed/wrf-arg4k` (read-only) and sets the matching `SIM_*_SEED_DIR` vars, so the host folders can live anywhere.
 
 ## API (port 6030)
 
 - `GET /health` — liveness
 - `GET /status` — per source: last/next tick, cursor positions + direction, emitted totals, ledger size, last error
-- `POST /tick/{glm|radar|wrf}` — force a tick now (409 if one is running). Radar/WRF can be forced freely; forcing GLM more than once inside the same 10-minute wall-clock window rebuilds the same filenames (overwrite-skip, no new window).
+- `POST /tick/{glm|radar|wrf}` — force a tick now (409 if one is running, 404 for an unknown source). Radar/WRF can be forced freely; forcing GLM more than once inside the same 10-minute wall-clock window rebuilds the same filenames (overwrite-skip, no new window).
 
 ## Notes
 

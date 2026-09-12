@@ -21,7 +21,7 @@ def _sample_state() -> SimState:
                 last_error=None,
                 ledger=(
                     LedgerEntry(
-                        path="/data/glm_h5/a.nc",
+                        path="/data/goes19-glm/a.nc",
                         emitted_at=datetime(2026, 6, 11, 14, 10, tzinfo=timezone.utc),
                     ),
                 ),

@@ -7,14 +7,14 @@ services:
       - "${SIM_PORT:-6030}:6030"
     environment:
       SIM_DATA_ROOT: /data
-      SIM_GLM_SEED_DIR: /seed/glm_h5
-      SIM_RADAR_SEED_DIR: /seed/radar_h5
-      SIM_WRF_SEED_DIR: /seed/wrf_nc
+      SIM_GLM_SEED_DIR: /seed/goes19-glm
+      SIM_RADAR_SEED_DIR: /seed/radar-sinarame
+      SIM_WRF_SEED_DIR: /seed/wrf-arg4k
     volumes:
       # Read-only master raw-data folders — the simulator only ever reads these.
-      - ${GLM_SEED_DIR:?set GLM_SEED_DIR}:/seed/glm_h5:ro
-      - ${RADAR_SEED_DIR:?set RADAR_SEED_DIR}:/seed/radar_h5:ro
-      - ${WRF_SEED_DIR:?set WRF_SEED_DIR}:/seed/wrf_nc:ro
+      - ${GLM_SEED_DIR:?set GLM_SEED_DIR}:/seed/goes19-glm:ro
+      - ${RADAR_SEED_DIR:?set RADAR_SEED_DIR}:/seed/radar-sinarame:ro
+      - ${WRF_SEED_DIR:?set WRF_SEED_DIR}:/seed/wrf-arg4k:ro
       # tiles-processor data dir (the producer's watched dirs + sim_state).
       # Writable; keep it on the same filesystem as the seed folders so
       # radar/WRF can hardlink (else emission falls back to copy).

@@ -20,7 +20,7 @@ def _touch(dir_path, name):
 
 
 def test_entry_beyond_ring_and_older_than_floor_is_deleted(tmp_path):
-    out = tmp_path / "glm_h5"
+    out = tmp_path / "goes19-glm"
     old = _touch(out, "old.nc")
     recent = _touch(out, "recent.nc")
 
@@ -35,7 +35,7 @@ def test_entry_beyond_ring_and_older_than_floor_is_deleted(tmp_path):
 
 
 def test_ring_evicts_oldest_ticks_beyond_n(tmp_path):
-    out = tmp_path / "glm_h5"
+    out = tmp_path / "goes19-glm"
     # Five distinct ticks, all older than the floor so only the ring decides.
     ages = [200, 250, 300, 400, 500]
     files = {age: _touch(out, f"f{age}.nc") for age in ages}
@@ -52,7 +52,7 @@ def test_ring_evicts_oldest_ticks_beyond_n(tmp_path):
 
 
 def test_floor_protects_young_entries_beyond_ring(tmp_path):
-    out = tmp_path / "glm_h5"
+    out = tmp_path / "goes19-glm"
     # Three young ticks (all < 180-min floor) but a ring of only 2: the 3rd-newest
     # is beyond the ring yet protected by the floor, so nothing is deleted.
     ages = [10, 20, 30]
@@ -67,7 +67,7 @@ def test_floor_protects_young_entries_beyond_ring(tmp_path):
 
 
 def test_delete_requires_both_beyond_ring_and_older_than_floor(tmp_path):
-    out = tmp_path / "glm_h5"
+    out = tmp_path / "goes19-glm"
     young_ring = _touch(out, "young_ring.nc")  # newest tick → in the ring
     young_floor = _touch(out, "young_floor.nc")  # beyond ring, but within floor
     old = _touch(out, "old.nc")  # beyond ring AND older than floor
@@ -88,7 +88,7 @@ def test_delete_requires_both_beyond_ring_and_older_than_floor(tmp_path):
 
 
 def test_fewer_ticks_than_ring_size_keeps_all(tmp_path):
-    out = tmp_path / "glm_h5"
+    out = tmp_path / "goes19-glm"
     ages = [200, 400]  # older than floor, but only 2 ticks vs a ring of 5
     files = {age: _touch(out, f"f{age}.nc") for age in ages}
     state = SourceState(ledger=tuple(_entry(files[age], age) for age in ages))
@@ -101,7 +101,7 @@ def test_fewer_ticks_than_ring_size_keeps_all(tmp_path):
 
 
 def test_paths_outside_emission_dirs_refused(tmp_path):
-    out = tmp_path / "glm_h5"
+    out = tmp_path / "goes19-glm"
     seed = tmp_path / "seed"
     out.mkdir()
     seed.mkdir()
@@ -121,7 +121,7 @@ def test_paths_outside_emission_dirs_refused(tmp_path):
 
 
 def test_missing_files_tolerated(tmp_path):
-    out = tmp_path / "glm_h5"
+    out = tmp_path / "goes19-glm"
     recent = _touch(out, "recent.nc")
     # gone.nc is selected for deletion (beyond ring + older than floor) but never
     # existed on disk — unlink(missing_ok=True) tolerates it.
@@ -133,7 +133,7 @@ def test_missing_files_tolerated(tmp_path):
 
 
 def test_non_ledger_fields_preserved(tmp_path):
-    out = tmp_path / "glm_h5"
+    out = tmp_path / "goes19-glm"
     out.mkdir()
     state = SourceState(emitted_total=7, last_error="boom", ledger=())
     pruned = Pruner((out,), retention_minutes=180, retention_ticks=5).sweep(state, NOW)

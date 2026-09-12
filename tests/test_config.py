@@ -35,36 +35,36 @@ def test_builtin_defaults_without_settings_file():
 
 def test_seed_dirs_default_under_seed_root():
     settings = Settings.load(settings_path=MISSING, env={})
-    assert settings.glm_seed_dir == Path("/data/seed/glm_h5")
-    assert settings.radar_seed_dir == Path("/data/seed/radar_h5")
-    assert settings.wrf_seed_dir == Path("/data/seed/wrf_nc")
+    assert settings.glm_seed_dir == Path("/data/seed/goes19-glm")
+    assert settings.radar_seed_dir == Path("/data/seed/radar-sinarame")
+    assert settings.wrf_seed_dir == Path("/data/seed/wrf-arg4k")
 
 
 def test_seed_dirs_follow_sim_seed_dir_base():
     settings = Settings.load(settings_path=MISSING, env={"SIM_SEED_DIR": "/master"})
-    assert settings.glm_seed_dir == Path("/master/glm_h5")
-    assert settings.radar_seed_dir == Path("/master/radar_h5")
-    assert settings.wrf_seed_dir == Path("/master/wrf_nc")
+    assert settings.glm_seed_dir == Path("/master/goes19-glm")
+    assert settings.radar_seed_dir == Path("/master/radar-sinarame")
+    assert settings.wrf_seed_dir == Path("/master/wrf-arg4k")
 
 
 def test_per_source_seed_dirs_override_independently():
     settings = Settings.load(
         settings_path=MISSING,
         env={
-            "SIM_GLM_SEED_DIR": "/home/u/raw/glm_raw_data/glm_h5",
-            "SIM_RADAR_SEED_DIR": "/home/u/raw/radar_h5",
-            "SIM_WRF_SEED_DIR": "/home/u/raw/wrf_raw_data/wrf_nc",
+            "SIM_GLM_SEED_DIR": "/home/u/raw/glm_raw_data/goes19-glm",
+            "SIM_RADAR_SEED_DIR": "/home/u/raw/radar-sinarame",
+            "SIM_WRF_SEED_DIR": "/home/u/raw/wrf_raw_data/wrf-arg4k",
         },
     )
-    assert settings.glm_seed_dir == Path("/home/u/raw/glm_raw_data/glm_h5")
-    assert settings.radar_seed_dir == Path("/home/u/raw/radar_h5")
-    assert settings.wrf_seed_dir == Path("/home/u/raw/wrf_raw_data/wrf_nc")
+    assert settings.glm_seed_dir == Path("/home/u/raw/glm_raw_data/goes19-glm")
+    assert settings.radar_seed_dir == Path("/home/u/raw/radar-sinarame")
+    assert settings.wrf_seed_dir == Path("/home/u/raw/wrf_raw_data/wrf-arg4k")
     # An explicit per-source override wins over the SIM_SEED_DIR base.
     mixed = Settings.load(
         settings_path=MISSING,
         env={"SIM_SEED_DIR": "/master", "SIM_RADAR_SEED_DIR": "/elsewhere/radar"},
     )
-    assert mixed.glm_seed_dir == Path("/master/glm_h5")
+    assert mixed.glm_seed_dir == Path("/master/goes19-glm")
     assert mixed.radar_seed_dir == Path("/elsewhere/radar")
 
 
