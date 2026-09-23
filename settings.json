@@ -24,5 +24,11 @@
     "retention_minutes": 1080,
     "retention_ticks": 5,
     "expected_forecast_hours": 72
+  },
+  "inta": {
+    "enabled": true,
+    "interval_minutes": 10,
+    "retention_minutes": 180,
+    "retention_ticks": 24
   }
 }

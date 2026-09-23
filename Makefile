@@ -37,7 +37,7 @@ logs: ## Follow the simulator logs
 status: ## Print the live status of every source
 	@curl -s localhost:$(SIM_PORT)/status | python3 -m json.tool
 
-tick: ## Force a tick now: make tick SRC=radar|glm|wrf
+tick: ## Force a tick now: make tick SRC=radar|glm|wrf|inta
 	@curl -s -X POST localhost:$(SIM_PORT)/tick/$(SRC); echo
 
 clean: ## Stop the container and remove orphans

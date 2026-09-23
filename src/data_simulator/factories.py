@@ -14,6 +14,7 @@ from data_simulator.core.replayer import Replayer
 from data_simulator.core.scheduler import ScheduledSource, TickScheduler
 from data_simulator.sources.glm.glm_attr_rewriter import GlmAttrRewriter
 from data_simulator.sources.glm.glm_replayer import GlmReplayer
+from data_simulator.sources.inta.inta_replayer import IntaReplayer
 from data_simulator.sources.radar.radar_replayer import RadarReplayer
 from data_simulator.sources.wrf.wrf_replayer import WrfReplayer
 from data_simulator.state.state_store import JsonStateStore
@@ -81,4 +82,10 @@ def _enabled_sources(
             expected_hours=settings.wrf_expected_hours,
         )
         sources.append((settings.wrf, replayer, dest))
+    if settings.inta.enabled:
+        dest = settings.data_root / "radar-inta"
+        replayer = IntaReplayer(
+            seed_dir=settings.inta_seed_dir, dest_dir=dest, emitter=emitter
+        )
+        sources.append((settings.inta, replayer, dest))
     return sources

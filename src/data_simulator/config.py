@@ -19,7 +19,11 @@ _SOURCE_DEFAULTS = {
     "glm": {"interval_minutes": 10, "retention_minutes": 180, "retention_ticks": 24},
     "radar": {"interval_minutes": 10, "retention_minutes": 180, "retention_ticks": 24},
     "wrf": {"interval_minutes": 360, "retention_minutes": 1080, "retention_ticks": 5},
+    "inta": {"interval_minutes": 10, "retention_minutes": 180, "retention_ticks": 24},
 }
+# Off unless settings.json turns it on: an enabled source with an empty seed
+# fails startup, and older deployments have no INTA seed folder.
+_DEFAULT_DISABLED = frozenset({"inta"})
 _DEFAULT_GLM_ACCUM_MINUTES = 10
 _DEFAULT_WRF_EXPECTED_HOURS = 72
 _DEFAULT_SUBVOLUME_OFFSETS = {"01": 0, "02": 20, "04": 40}
@@ -48,12 +52,14 @@ class Settings:
     glm_seed_dir: Path
     radar_seed_dir: Path
     wrf_seed_dir: Path
+    inta_seed_dir: Path
     state_file: Path
     port: int
     link_mode: str
     glm: SourceSettings
     radar: SourceSettings
     wrf: SourceSettings
+    inta: SourceSettings
     glm_accum_minutes: int
     wrf_expected_hours: int
     radar_subvolume_offsets: dict[str, int]
@@ -74,6 +80,7 @@ class Settings:
             glm_seed_dir=_seed_dir(env, "SIM_GLM_SEED_DIR", seed_dir, "glm_h5"),
             radar_seed_dir=_seed_dir(env, "SIM_RADAR_SEED_DIR", seed_dir, "radar_h5"),
             wrf_seed_dir=_seed_dir(env, "SIM_WRF_SEED_DIR", seed_dir, "wrf_nc"),
+            inta_seed_dir=_seed_dir(env, "SIM_INTA_SEED_DIR", seed_dir, "radar-inta"),
             state_file=Path(
                 env.get("SIM_STATE_FILE", str(data_root / "sim_state/state.json"))
             ),
@@ -82,6 +89,7 @@ class Settings:
             glm=resolve.source("glm"),
             radar=resolve.source("radar"),
             wrf=resolve.source("wrf"),
+            inta=resolve.source("inta"),
             glm_accum_minutes=resolve.number(
                 ("glm",), "accum_minutes", "SIM_GLM_ACCUM_MINUTES",
                 _DEFAULT_GLM_ACCUM_MINUTES,
@@ -104,7 +112,12 @@ class Settings:
             raise ConfigError("glm accum_minutes must be > 0")
         if self.wrf_expected_hours <= 0:
             raise ConfigError("wrf expected_forecast_hours must be > 0")
-        for name, source in (("glm", self.glm), ("radar", self.radar), ("wrf", self.wrf)):
+        for name, source in (
+            ("glm", self.glm),
+            ("radar", self.radar),
+            ("wrf", self.wrf),
+            ("inta", self.inta),
+        ):
             if source.interval_minutes <= 0:
                 raise ConfigError(f"{name} interval_minutes must be > 0")
             if source.retention_minutes <= 0:
@@ -124,7 +137,9 @@ class _Resolver:
         defaults = _SOURCE_DEFAULTS[name]
         prefix = f"SIM_{name.upper()}"
         return SourceSettings(
-            enabled=self.flag((name,), "enabled", f"{prefix}_ENABLED", True),
+            enabled=self.flag(
+                (name,), "enabled", f"{prefix}_ENABLED", name not in _DEFAULT_DISABLED
+            ),
             interval_minutes=self.number(
                 (name,), "interval_minutes", f"{prefix}_INTERVAL_MINUTES",
                 defaults["interval_minutes"],

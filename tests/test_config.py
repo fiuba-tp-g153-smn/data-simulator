@@ -38,6 +38,15 @@ def test_seed_dirs_default_under_seed_root():
     assert settings.glm_seed_dir == Path("/data/seed/glm_h5")
     assert settings.radar_seed_dir == Path("/data/seed/radar_h5")
     assert settings.wrf_seed_dir == Path("/data/seed/wrf_nc")
+    assert settings.inta_seed_dir == Path("/data/seed/radar-inta")
+
+
+def test_inta_is_off_by_default_and_opt_in(tmp_path):
+    assert Settings.load(settings_path=MISSING, env={}).inta.enabled is False
+    path = _write_settings(tmp_path, {"inta": {"enabled": True}})
+    assert Settings.load(settings_path=path, env={}).inta.enabled is True
+    env = {"SIM_INTA_ENABLED": "true"}
+    assert Settings.load(settings_path=MISSING, env=env).inta.enabled is True
 
 
 def test_seed_dirs_follow_sim_seed_dir_base():

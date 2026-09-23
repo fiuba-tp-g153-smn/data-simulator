@@ -1,6 +1,6 @@
 # data-simulator
 
-Replays the static GLM / SINARAME radar / WRF-ARG4K snapshots of **tiles-processor** as if new data were arriving, so the full pipeline (producer → RabbitMQ → workers → tiles) runs continuously on a VPS without live feeds.
+Replays the static GLM / SINARAME radar / INTA radar / WRF-ARG4K snapshots of **tiles-processor** as if new data were arriving, so the full pipeline (producer → RabbitMQ → workers → tiles) runs continuously on a VPS without live feeds.
 
 ## How it works
 
@@ -11,6 +11,7 @@ The tiles-processor producer identifies images purely by **filename-derived time
 | GLM    | every 10 min          | one complete 10-file window mapped to `[T-10min, T)`                                                    | **copy** + rewrite of the `time_coverage_start/end` HDF5 attrs (the worker aggregation bins files by those internal attrs — stale values would fail the job) |
 | Radar  | every 10 min          | one scan per (radar, subvolume) series, all variables                                                   | hardlink with rewritten timestamp (+0s/+20s/+40s per subvolume 01/02/04 to keep image_ids unique)                                                            |
 | WRF    | 00/06/12/18           | one complete run (F000–F072, FIELD2D **and** FIELD3D = 146 files) with `INIT_TAG` rewritten to the slot | hardlink (a run is ~11.5 GB; links are instant and cost no disk)                                                                                             |
+| INTA   | every 10 min          | one 240 km scan per station (`<seed>/PAR/`, `ANG/`, `PER/`), all variables                              | hardlink with the 14-digit filename timestamp rewritten to the tick; the interleaved 120 km scans are skipped (tiles-processor drops them)      |
 
 Incomplete WRF runs in the seed are excluded automatically. Old emissions are pruned by a hybrid **ring + floor** rule: the newest `retention_ticks` ticks per source are always kept (count-based, so a slow/stopped consumer is never pruned out from under it), and nothing younger than `retention_minutes` (the min-age floor) is ever deleted — an emission is removed only when it is *both* beyond the ring and older than the floor (only files the simulator itself created — tracked in a ledger — are ever deleted). State (cursors, last tick, ledger) persists in `<data>/sim_state/state.json`, so restarts resume where they left off; on startup the most recent aligned tick is emitted immediately (catch-up).
 
@@ -25,7 +26,7 @@ cd data-simulator
 
 # 2. Configure — point at your read-only master folders and the tiles-processor data
 cp .env.example .env
-$EDITOR .env     # set GLM_SEED_DIR / RADAR_SEED_DIR / WRF_SEED_DIR + TILES_DATA_DIR
+$EDITOR .env     # set GLM_SEED_DIR / RADAR_SEED_DIR / WRF_SEED_DIR / INTA_SEED_DIR + TILES_DATA_DIR
 
 # 3. Boot
 make up          # build + start the container (detached)
@@ -63,7 +64,7 @@ docker volume ls | grep tiles-data
 | `make restart` | Restart — picks up `settings.json` edits without a rebuild. |
 | `make logs` | Follow the tick logs. |
 | `make status` | Pretty-print `/status` for all sources. |
-| `make tick SRC=radar` | Force a tick now for one source (`glm`\|`radar`\|`wrf`). |
+| `make tick SRC=radar` | Force a tick now for one source (`glm`\|`radar`\|`wrf`\|`inta`). |
 | `make install` | Create the local `.venv` and install dev deps. |
 | `make test` | Run the test suite with coverage (same command as CI). |
 | `make clean` | Stop the container and remove orphans. |
@@ -75,7 +76,7 @@ Same scheme as tiles-processor: tunables live in **`settings.json`** (mounted in
 | settings.json | env override |
 |---|---|
 | `link_mode` | `SIM_LINK_MODE` |
-| `<src>.enabled` | `SIM_<SRC>_ENABLED` |
+| `<src>.enabled` | `SIM_<SRC>_ENABLED` (built-in default: on, except `inta`) |
 | `<src>.interval_minutes` | `SIM_<SRC>_INTERVAL_MINUTES` |
 | `<src>.retention_minutes` | `SIM_<SRC>_RETENTION_MINUTES` |
 | `<src>.retention_ticks` | `SIM_<SRC>_RETENTION_TICKS` |
@@ -93,17 +94,18 @@ Paths are env-only (not in settings.json):
 | `SIM_GLM_SEED_DIR` | `$SIM_SEED_DIR/glm_h5` | Master GLM folder (`*.nc`). |
 | `SIM_RADAR_SEED_DIR` | `$SIM_SEED_DIR/radar_h5` | Master radar folder (`RMAx/*.H5`). |
 | `SIM_WRF_SEED_DIR` | `$SIM_SEED_DIR/wrf_nc` | Master WRF folder (`*FIELD2D*.nc` + FIELD3D siblings). |
-| `SIM_SEED_DIR` | `$SIM_DATA_ROOT/seed` | Base for the three seed defaults above; set this alone if all three sit under one root. |
+| `SIM_INTA_SEED_DIR` | `$SIM_SEED_DIR/radar-inta` | Master INTA folder (`<STATION>/*.vol`, one subfolder per radar; `.azi` files are ignored). |
+| `SIM_SEED_DIR` | `$SIM_DATA_ROOT/seed` | Base for the four seed defaults above; set this alone if all four sit under one root. |
 | `SIM_STATE_FILE` | `$SIM_DATA_ROOT/sim_state/state.json` | Cursor/ledger state (must be writable). |
 | `SIM_SETTINGS_PATH` | `./settings.json` | Tunables file. |
 
-The compose file maps your three host folders to `/seed/glm_h5`, `/seed/radar_h5`, `/seed/wrf_nc` (read-only) and sets the matching `SIM_*_SEED_DIR` vars, so the host folders can live anywhere.
+The compose file maps your four host folders to `/seed/glm_h5`, `/seed/radar_h5`, `/seed/wrf_nc`, `/seed/radar-inta` (read-only) and sets the matching `SIM_*_SEED_DIR` vars, so the host folders can live anywhere.
 
 ## API (port 6030)
 
 - `GET /health` — liveness
 - `GET /status` — per source: last/next tick, cursor positions + direction, emitted totals, ledger size, last error
-- `POST /tick/{glm|radar|wrf}` — force a tick now (409 if one is running). Radar/WRF can be forced freely; forcing GLM more than once inside the same 10-minute wall-clock window rebuilds the same filenames (overwrite-skip, no new window).
+- `POST /tick/{glm|radar|wrf|inta}` — force a tick now (409 if one is running). Radar/WRF can be forced freely; forcing GLM more than once inside the same 10-minute wall-clock window rebuilds the same filenames (overwrite-skip, no new window).
 
 ## Notes
 
