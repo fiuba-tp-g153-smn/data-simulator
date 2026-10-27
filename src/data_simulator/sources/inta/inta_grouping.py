@@ -1,4 +1,4 @@
-"""Group INTA seed files into per-station series of 240 km scans."""
+"""Group INTA seed files into per-station series of published scans."""
 
 import logging
 from collections import defaultdict
@@ -13,10 +13,15 @@ from data_simulator.sources.inta.inta_filenames import (
 
 logger = logging.getLogger(__name__)
 
-# Only these volumes are published by tiles-processor (INTA_STOP_RANGE_KM).
-# Anguil and Pergamino interleave 120 km scans in the same folder; replaying
-# them would spend every other tick on a scan the producer throws away.
+# Mirrors tiles-processor's IntaScanSpec.accepts_range: volumes are published
+# only at exactly 240 km and .azi PPIs only beyond it. Anguil and Pergamino
+# interleave 120 km scans in the same folder; replaying them would spend every
+# other tick on a scan the producer throws away.
 PUBLISHED_STOP_RANGE_KM = 240.0
+
+# Long-range PPIs get their own series (and cursor) next to the station's
+# volumes: ``ANG`` holds the .vol scans, ``ANG/azi`` the .azi ones.
+LONG_RANGE_SERIES_SUFFIX = "/azi"
 
 
 @dataclass(frozen=True, slots=True)
@@ -30,10 +35,10 @@ class IntaScan:
 def group_inta_seed(
     files: list[Path], seed_dir: Path
 ) -> dict[str, tuple[IntaScan, ...]]:
-    """Return ``{"PAR": (scan, scan, ...)}`` with scans in chronological order.
+    """Return ``{"PAR": (scan, ...), "PAR/azi": (scan, ...)}``, scans in order.
 
-    The station key is the seed subfolder (``<seed>/PAR/*.vol``), falling back
-    to the filename's radar token for flat files — the sample names carry none,
+    The station is the seed subfolder (``<seed>/PAR/*.vol``), falling back to
+    the filename's radar token for flat files — the sample names carry none,
     so the folder is the only place the station is guaranteed to show up.
     """
     buckets: dict[str, dict[datetime, list[Path]]] = defaultdict(
@@ -45,22 +50,33 @@ def group_inta_seed(
         except ValueError as exc:
             logger.debug("Skipping non-INTA file %s (%s)", path, exc)
             continue
-        station = _station_key(path, seed_dir, parts.radar)
-        buckets[station][parts.timestamp].append(path)
+        key = _station_key(path, seed_dir, parts.radar)
+        if parts.is_long_range:
+            key += LONG_RANGE_SERIES_SUFFIX
+        buckets[key][parts.timestamp].append(path)
 
     series: dict[str, tuple[IntaScan, ...]] = {}
-    for station, scans in buckets.items():
+    for key, scans in buckets.items():
         published = tuple(
             IntaScan(timestamp=ts, files=tuple(sorted(scans[ts])))
             for ts in sorted(scans)
-            if _is_published_range(scans[ts])
+            if _is_published_range(scans[ts], is_long_range_series(key))
         )
         skipped = len(scans) - len(published)
         if skipped:
-            logger.info("INTA %s: skipped %d non-240 km scans", station, skipped)
+            logger.info("INTA %s: skipped %d unpublished-range scans", key, skipped)
         if published:
-            series[station] = published
+            series[key] = published
     return series
+
+
+def is_long_range_series(key: str) -> bool:
+    return key.endswith(LONG_RANGE_SERIES_SUFFIX)
+
+
+def station_of(key: str) -> str:
+    """Station folder a series emits into (``ANG/azi`` → ``ANG``)."""
+    return key.removesuffix(LONG_RANGE_SERIES_SUFFIX)
 
 
 def _station_key(path: Path, seed_dir: Path, radar_token: str) -> str:
@@ -69,5 +85,10 @@ def _station_key(path: Path, seed_dir: Path, radar_token: str) -> str:
     return radar_token.upper() or "UNKNOWN"
 
 
-def _is_published_range(files: list[Path]) -> bool:
-    return read_stop_range_km(sorted(files)[0]) == PUBLISHED_STOP_RANGE_KM
+def _is_published_range(files: list[Path], long_range: bool) -> bool:
+    stop_range = read_stop_range_km(sorted(files)[0])
+    if stop_range is None:
+        return False
+    if long_range:
+        return stop_range > PUBLISHED_STOP_RANGE_KM
+    return stop_range == PUBLISHED_STOP_RANGE_KM

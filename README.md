@@ -11,7 +11,7 @@ The tiles-processor producer identifies images purely by **filename-derived time
 | GLM    | every 10 min          | one complete 10-file window mapped to `[T-10min, T)`                                                    | **copy** + rewrite of the `time_coverage_start/end` HDF5 attrs (the worker aggregation bins files by those internal attrs — stale values would fail the job) |
 | Radar  | every 10 min          | one scan per (radar, subvolume) series, all variables                                                   | hardlink with rewritten timestamp (+0s/+20s/+40s per subvolume 01/02/04 to keep image_ids unique)                                                            |
 | WRF    | 00/06/12/18           | one complete run (F000–F072, FIELD2D **and** FIELD3D = 146 files) with `INIT_TAG` rewritten to the slot | hardlink (a run is ~11.5 GB; links are instant and cost no disk)                                                                                             |
-| INTA   | every 10 min          | one 240 km scan per station (`<seed>/PAR/`, `ANG/`, `PER/`), all variables                              | hardlink with the 14-digit filename timestamp rewritten to the tick; the interleaved 120 km scans are skipped (tiles-processor drops them)      |
+| INTA   | every 10 min          | per station (`<seed>/PAR/`, `ANG/`, `PER/`): one 240 km `.vol` scan, all variables, plus one long-range `.azi` PPI when the seed has them | hardlink with the 14-digit filename timestamp rewritten to the tick; `.vol` and `.azi` are separate series with their own cursors, both stamped with the tick (they feed `dbzh` and `dbzh-450km`). Only what tiles-processor publishes is replayed: `.vol` at exactly 240 km (the interleaved 120 km scans are skipped), `.azi` beyond 240 km |
 
 Incomplete WRF runs in the seed are excluded automatically. Old emissions are pruned by a hybrid **ring + floor** rule: the newest `retention_ticks` ticks per source are always kept (count-based, so a slow/stopped consumer is never pruned out from under it), and nothing younger than `retention_minutes` (the min-age floor) is ever deleted — an emission is removed only when it is *both* beyond the ring and older than the floor (only files the simulator itself created — tracked in a ledger — are ever deleted). State (cursors, last tick, ledger) persists in `<data>/sim_state/state.json`, so restarts resume where they left off; on startup the most recent aligned tick is emitted immediately (catch-up).
 
@@ -58,7 +58,7 @@ docker volume ls | grep tiles-data
 ### Make targets
 
 | Target | What it does |
-|---|---|
+| --- | --- |
 | `make up` | Build and start the simulator (detached). |
 | `make down` | Stop and remove the container. |
 | `make restart` | Restart — picks up `settings.json` edits without a rebuild. |
@@ -74,7 +74,7 @@ docker volume ls | grep tiles-data
 Same scheme as tiles-processor: tunables live in **`settings.json`** (mounted into the container — edit + restart, no rebuild); `.env` holds only deployment values (`TILES_DATA_DIR`, `SIM_PORT`). Every scalar in settings.json can also be overridden with an env var (env > settings.json > built-in default):
 
 | settings.json | env override |
-|---|---|
+| --- | --- |
 | `link_mode` | `SIM_LINK_MODE` |
 | `<src>.enabled` | `SIM_<SRC>_ENABLED` (built-in default: on, except `inta`) |
 | `<src>.interval_minutes` | `SIM_<SRC>_INTERVAL_MINUTES` |
@@ -89,12 +89,12 @@ Same scheme as tiles-processor: tunables live in **`settings.json`** (mounted in
 Paths are env-only (not in settings.json):
 
 | Env var | Default | Points at |
-|---|---|---|
+| --- | --- | --- |
 | `SIM_DATA_ROOT` | `/data` | Emission target root (producer's watched dirs live here). |
 | `SIM_GLM_SEED_DIR` | `$SIM_SEED_DIR/glm_h5` | Master GLM folder (`*.nc`). |
 | `SIM_RADAR_SEED_DIR` | `$SIM_SEED_DIR/radar_h5` | Master radar folder (`RMAx/*.H5`). |
 | `SIM_WRF_SEED_DIR` | `$SIM_SEED_DIR/wrf_nc` | Master WRF folder (`*FIELD2D*.nc` + FIELD3D siblings). |
-| `SIM_INTA_SEED_DIR` | `$SIM_SEED_DIR/radar-inta` | Master INTA folder (`<STATION>/*.vol`, one subfolder per radar; `.azi` files are ignored). |
+| `SIM_INTA_SEED_DIR` | `$SIM_SEED_DIR/radar-inta` | Master INTA folder (`<STATION>/*.vol` + `<STATION>/*.azi`, one subfolder per radar). A seed without `.azi` still runs: it logs a warning and replays only the volumes. |
 | `SIM_SEED_DIR` | `$SIM_DATA_ROOT/seed` | Base for the four seed defaults above; set this alone if all four sit under one root. |
 | `SIM_STATE_FILE` | `$SIM_DATA_ROOT/sim_state/state.json` | Cursor/ledger state (must be writable). |
 | `SIM_SETTINGS_PATH` | `./settings.json` | Tunables file. |
@@ -112,7 +112,7 @@ The compose file maps your four host folders to `/seed/glm_h5`, `/seed/radar_h5`
 - GLM windows become eligible for the producer ~30 s after the tick (its safety lag) and are discovered on its next 5-min scan — up to ~5 min latency is normal.
 - At a ping-pong turnaround the weather plays in reverse for one pass; intra-window GLM file order is reversed too so motion stays continuous.
 - `link_mode` is `copy` by default for the cross-filesystem Hetzner layout (see [Hardlink vs copy](#hardlink-vs-copy)); `hardlink` is the better choice when master data and the data volume share a filesystem.
-- Filename formats are mirrored from `tiles-processor/src/models/{radar_config,wrf_config}.py`, `src/models/glm_folder_config.py`; window semantics from `src/data_sources/glm_folder.py`; attr contract from `src/services/glm_aggregation.py`.
+- Filename formats are mirrored from `tiles-processor/src/models/{radar_config,wrf_config,rainbow_header}.py`, `src/models/glm_folder_config.py`; window semantics from `src/data_sources/glm_folder.py`; attr contract from `src/services/glm_aggregation.py`.
 
 ## Development
 
